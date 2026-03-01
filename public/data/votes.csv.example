@@ -1,0 +1,11 @@
+politicianId,lawName,date,voted,scoreChange
+1,Zakon o statnim rozpoctu 2025,15.1.2024,pro,5
+1,Novela zakona o dani z prijmu,22.2.2024,proti,-3
+1,Zakon o kyberneticke bezpecnosti,10.3.2024,pro,4
+1,Duchodova reforma,5.4.2024,pro,6
+1,Novela stavebniho zakona,20.5.2024,zdrzel,-1
+2,Zakon o statnim rozpoctu 2025,15.1.2024,proti,-4
+2,Novela zakona o dani z prijmu,22.2.2024,pro,6
+2,Zakon o kyberneticke bezpecnosti,10.3.2024,pro,3
+2,Duchodova reforma,5.4.2024,proti,-5
+2,Novela stavebniho zakona,20.5.2024,pro,4

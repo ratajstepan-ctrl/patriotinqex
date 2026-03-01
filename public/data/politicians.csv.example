@@ -1,0 +1,11 @@
+id,name,party,birthDate,servingSince,imageUrl
+1,Andrej Babis,ANO,2.10.1954,2013,/images/politicians/babis.jpg
+2,Petr Fiala,ODS,1.9.1964,2013,/images/politicians/fiala.jpg
+3,Ivan Bartos,PIR,20.3.1980,2017,
+4,Vit Rakusan,STAN,27.7.1978,2017,/images/politicians/rakusan.jpg
+5,Tomio Okamura,SPD,1.7.1972,2013,
+6,Marketa Pekarova Adamova,TOP09,30.9.1984,2017,
+7,Katerina Konecna,STA,20.1.1981,2023,
+8,Petr Macinka,MOT,15.5.1975,2021,
+9,Robert Slachta,PRI,10.12.1971,2021,
+10,Jan Novak,NEZ,5.3.1960,2010,

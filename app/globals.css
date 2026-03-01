@@ -1,0 +1,250 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 220 20% 4%;
+    --foreground: 40 20% 92%;
+    --card: 220 18% 8%;
+    --card-foreground: 40 20% 92%;
+    --popover: 220 18% 8%;
+    --popover-foreground: 40 20% 92%;
+    --primary: 0 72% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 16% 14%;
+    --secondary-foreground: 40 20% 85%;
+    --muted: 220 14% 12%;
+    --muted-foreground: 220 10% 50%;
+    --accent: 0 72% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 14% 16%;
+    --input: 220 14% 16%;
+    --ring: 0 72% 50%;
+    --chart-1: 0 72% 50%;
+    --chart-2: 215 60% 45%;
+    --chart-3: 40 20% 92%;
+    --chart-4: 220 14% 40%;
+    --chart-5: 0 50% 35%;
+    --radius: 0.25rem;
+    --sidebar-background: 220 18% 6%;
+    --sidebar-foreground: 40 20% 92%;
+    --sidebar-primary: 0 72% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 12%;
+    --sidebar-accent-foreground: 40 20% 92%;
+    --sidebar-border: 220 14% 16%;
+    --sidebar-ring: 0 72% 50%;
+  }
+
+  .dark {
+    --background: 220 20% 4%;
+    --foreground: 40 20% 92%;
+    --card: 220 18% 8%;
+    --card-foreground: 40 20% 92%;
+    --popover: 220 18% 8%;
+    --popover-foreground: 40 20% 92%;
+    --primary: 0 72% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 16% 14%;
+    --secondary-foreground: 40 20% 85%;
+    --muted: 220 14% 12%;
+    --muted-foreground: 220 10% 50%;
+    --accent: 0 72% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 14% 16%;
+    --input: 220 14% 16%;
+    --ring: 0 72% 50%;
+    --chart-1: 0 72% 50%;
+    --chart-2: 215 60% 45%;
+    --chart-3: 40 20% 92%;
+    --chart-4: 220 14% 40%;
+    --chart-5: 0 50% 35%;
+    --radius: 0.25rem;
+  }
+
+  .light {
+    --background: 0 0% 97%;
+    --foreground: 220 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+    --primary: 0 72% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 220 16% 30%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 0 72% 46%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 14% 86%;
+    --input: 220 14% 86%;
+    --ring: 0 72% 46%;
+    --chart-1: 0 72% 46%;
+    --chart-2: 215 60% 50%;
+    --chart-3: 220 20% 10%;
+    --chart-4: 220 14% 65%;
+    --chart-5: 0 50% 40%;
+    --radius: 0.25rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 20% 10%;
+    --sidebar-primary: 0 72% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 92%;
+    --sidebar-accent-foreground: 220 20% 10%;
+    --sidebar-border: 220 14% 86%;
+    --sidebar-ring: 0 72% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Page turn animation */
+@keyframes pageTurnOut {
+  0% {
+    transform: perspective(1600px) rotateY(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(1600px) rotateY(-90deg);
+    opacity: 0;
+  }
+}
+
+@keyframes pageTurnIn {
+  0% {
+    transform: perspective(1600px) rotateY(90deg);
+    opacity: 0;
+  }
+  100% {
+    transform: perspective(1600px) rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+/* View Transition API for smooth theme switching */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation-name: themeFadeOut;
+}
+
+::view-transition-new(root) {
+  animation-name: themeFadeIn;
+}
+
+@keyframes themeFadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes themeFadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Slot machine horizontal spin blur */
+@keyframes slotHorizontalSpin {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Light mode parliament chamber background - slightly darker/grainy */
+.light .parliament-chamber-bg {
+  background-color: hsl(220 14% 90%);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* Dark mode parliament chamber background - matches overall dark scheme */
+.parliament-chamber-bg {
+  background-color: hsl(220 18% 7%);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
+}
+
+/* Simple fade-in for region bar etc */
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Slide-in animations for voting history table */
+@keyframes slideFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-from-left {
+  animation: slideFromLeft 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.animate-slide-from-right {
+  animation: slideFromRight 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
