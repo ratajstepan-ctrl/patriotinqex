@@ -514,7 +514,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
           {activeFilters.length > 0 && (
             <button type="button"
               onClick={() => { setActiveFilters([]); setSelectedParty(null); setSelectedRegion(null); setSelectedAge(null); setSelectedGender(null); }}
-              className="px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border transition-all flex-shrink-0">
+              className="px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-[#CF4444] hover:bg-[#CF4444] hover:text-white border-2 border-[#CF4444] transition-all flex-shrink-0">
               {"Zru\u0161it filtry"}
             </button>
           )}
@@ -643,7 +643,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
                   }}
                 >
                   {(isSelected || isCompareLeft || isCompareRight || isHovered) && (
-                    <circle cx={seat.x} cy={seat.y} r={r + 1} fill="none" stroke="#ef4444" strokeWidth={0.5} />
+                    <circle cx={seat.x} cy={seat.y} r={r + 1} fill="none" stroke="#CF4444" strokeWidth={0.5} />
                   )}
                   {/* Outer glow ring for light mode "sharpen" effect */}
                   {!faded && (
@@ -702,7 +702,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
         <div className="flex items-center justify-center gap-3 py-3" style={{ minHeight: "44px" }}>
           {hasAnySelection && !compareMode && (
             <button type="button" onClick={clearAll}
-              className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-primary border border-primary/40 hover:bg-primary hover:text-primary-foreground transition-all bg-transparent">
+              className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-[#CF4444] border-2 border-[#CF4444] hover:bg-[#CF4444] hover:text-white transition-all bg-transparent">
               {"Zru\u0161it v\u00fdb\u011br"}
             </button>
           )}
@@ -711,7 +711,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
               <span className="text-xs font-mono uppercase tracking-wider text-primary">
                 {compareRight ? "Porovn\u00e1n\u00ed aktivn\u00ed" : compareLeft?.type === "politician" ? "Klikn\u011bte na politika k porovn\u00e1n\u00ed" : "Klikn\u011bte na stranu k porovn\u00e1n\u00ed"}
               </span>
-              <button type="button" onClick={exitCompare} className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
+              <button type="button" onClick={exitCompare} className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider border-2 border-[#CF4444] text-[#CF4444] hover:bg-[#CF4444] hover:text-white transition-colors">
                 {"Zru\u0161it porovn\u00e1n\u00ed"}
               </button>
             </div>

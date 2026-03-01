@@ -236,14 +236,14 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 mt-4">
-            <div className="flex flex-col gap-2 p-4 border border-border">
-              <span className="text-2xl md:text-3xl font-bold text-primary font-mono">{"Nikomu nenadržujeme."}</span>
-              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{"Stranická příslušnost se skórem nepohne."}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+            <div className="flex flex-col gap-2 p-4 border border-border overflow-hidden">
+              <span className="text-xl md:text-2xl font-bold text-primary font-mono leading-tight text-balance">{"Nikomu nenadržujeme."}</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed">{"Stranická příslušnost se skórem nepohne."}</span>
             </div>
-            <div className="flex flex-col gap-2 p-4 border border-border">
-              <span className="text-2xl md:text-3xl font-bold text-primary font-mono">{"Spolupracujeme s odborníky."}</span>
-              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{"Zákonné analýzy hodnotíme ve spolupráci s kvalifikovanými experty."}</span>
+            <div className="flex flex-col gap-2 p-4 border border-border overflow-hidden">
+              <span className="text-xl md:text-2xl font-bold text-primary font-mono leading-tight text-balance">{"Spolupracujeme s odborníky."}</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed">{"Zákonné analýzy hodnotíme ve spolupráci s kvalifikovanými experty."}</span>
             </div>
           </div>
         </div>
