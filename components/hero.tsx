@@ -18,84 +18,100 @@ const GIF_SOURCES = [
   "/images/hero-gifs/animation-7.gif",
 ];
 
+/** How long to show the static logo before the first animation */
 const INITIAL_DELAY = 5000;
-const GIF_DISPLAY_DURATION = 3600;
+/** How long each GIF plays (should match or exceed the actual GIF duration) */
+const GIF_PLAY_DURATION = 3600;
+/** Pause on the static logo between animations */
 const PAUSE_BETWEEN = 4000;
-const FADE_DURATION = 400;
 
 /**
- * Sequencer:
- * 1. Show static logo first for INITIAL_DELAY
- * 2. Crossfade to GIF, let it play for GIF_DISPLAY_DURATION
- * 3. Crossfade back to static, wait PAUSE_BETWEEN
- * 4. Move to next GIF, repeat from step 2
+ * GIF Sequencer — instant swap approach (no crossfade).
  *
- * GIFs have loop count = 1 internally, so we force-reload them
- * with a cache-busting query param each time to reset playback.
+ * The GIFs have an internal loop count of 1. To "reset" them we must
+ * force the browser to re-fetch a fresh copy each time by appending a
+ * unique query string.
+ *
+ * Flow:
+ *   1. Show static logo for INITIAL_DELAY ms.
+ *   2. Preload next GIF via `new Image()`. Once loaded, swap it in
+ *      instantly (opacity 1, static hidden).
+ *   3. After GIF_PLAY_DURATION ms, swap back to static instantly.
+ *   4. Wait PAUSE_BETWEEN ms, then go to step 2 for the next GIF.
  */
 function useGifSequencer() {
-  const [gifSrc, setGifSrc] = useState<string | null>(null);
-  const [gifOpacity, setGifOpacity] = useState(0);
-  const [staticOpacity, setStaticOpacity] = useState(1);
-
+  // "active" = the cache-busted src currently showing, or null = show static
+  const [activeSrc, setActiveSrc] = useState<string | null>(null);
   const gifIndexRef = useRef(0);
+  const cancelRef = useRef(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const clearAllTimers = useCallback(() => {
-    for (const t of timersRef.current) clearTimeout(t);
-    timersRef.current = [];
-  }, []);
-
-  const addTimer = useCallback((fn: () => void, delay: number) => {
-    const id = setTimeout(fn, delay);
+  const addTimer = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
     timersRef.current.push(id);
     return id;
   }, []);
 
-  const playNextGif = useCallback(() => {
-    clearAllTimers();
+  const clearTimers = useCallback(() => {
+    for (const t of timersRef.current) clearTimeout(t);
+    timersRef.current = [];
+  }, []);
+
+  const runSequence = useCallback(() => {
+    if (cancelRef.current) return;
 
     const idx = gifIndexRef.current;
-    // Force-reload the GIF so its single-loop animation plays from the start
-    const nextGif = `${GIF_SOURCES[idx]}?t=${Date.now()}`;
+    const freshSrc = `${GIF_SOURCES[idx]}?t=${Date.now()}`;
 
-    // Step 1: Mount the new GIF hidden, then crossfade in
-    setGifSrc(nextGif);
-    setGifOpacity(0);
+    // Preload the GIF so it starts from frame 0 in the DOM
+    const img = new Image();
+    img.src = freshSrc;
 
-    // Small delay to let the browser start loading the GIF before fading
-    addTimer(() => {
-      setStaticOpacity(0);
-      setGifOpacity(1);
-    }, 50);
+    const onReady = () => {
+      if (cancelRef.current) return;
+      // Instant swap — show the GIF
+      setActiveSrc(freshSrc);
 
-    // Step 2: After the GIF has played, crossfade back to static
-    addTimer(() => {
-      setStaticOpacity(1);
-      setGifOpacity(0);
-
-      // Step 3: After fade completes, unmount GIF and advance index
+      // After the GIF has played, swap back to static
       addTimer(() => {
-        setGifSrc(null);
+        if (cancelRef.current) return;
+        setActiveSrc(null);
+
+        // Advance to next GIF
         gifIndexRef.current = (idx + 1) % GIF_SOURCES.length;
 
-        // Step 4: Wait the pause duration, then play the next one
+        // Pause, then play next
         addTimer(() => {
-          playNextGif();
+          runSequence();
         }, PAUSE_BETWEEN);
-      }, FADE_DURATION);
-    }, GIF_DISPLAY_DURATION);
-  }, [clearAllTimers, addTimer]);
+      }, GIF_PLAY_DURATION);
+    };
+
+    // If cached it fires synchronously, otherwise wait for load
+    if (img.complete) {
+      onReady();
+    } else {
+      img.onload = onReady;
+      img.onerror = () => {
+        // Skip broken GIF, try next after pause
+        gifIndexRef.current = (idx + 1) % GIF_SOURCES.length;
+        addTimer(() => runSequence(), PAUSE_BETWEEN);
+      };
+    }
+  }, [addTimer]);
 
   useEffect(() => {
-    const initialTimer = setTimeout(playNextGif, INITIAL_DELAY);
-    return () => {
-      clearTimeout(initialTimer);
-      clearAllTimers();
-    };
-  }, [playNextGif, clearAllTimers]);
+    cancelRef.current = false;
+    const id = setTimeout(() => runSequence(), INITIAL_DELAY);
+    timersRef.current.push(id);
 
-  return { gifSrc, gifOpacity, staticOpacity };
+    return () => {
+      cancelRef.current = true;
+      clearTimers();
+    };
+  }, [runSequence, clearTimers]);
+
+  return { activeSrc };
 }
 
 interface HeroProps {
@@ -104,8 +120,7 @@ interface HeroProps {
 
 export function Hero({ onEnterParliament }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
-  const { gifSrc, gifOpacity, staticOpacity } =
-    useGifSequencer();
+  const { activeSrc } = useGifSequencer();
 
   useEffect(() => {
     const el = heroRef.current;
@@ -147,30 +162,13 @@ export function Hero({ onEnterParliament }: HeroProps) {
         <div className="relative flex items-center justify-center w-full max-w-5xl min-h-[200px] md:min-h-[280px]">
           <div className="relative w-full max-w-5xl">
 
-            {/* STATIC IMAGE - always mounted */}
+            {/* Show the GIF when active, otherwise the static logo */}
             <img
-              src={STATIC_LOGO_SRC}
+              src={activeSrc ?? STATIC_LOGO_SRC}
+              key={activeSrc ?? "static"}
               alt="Patriot Index"
               className="absolute inset-0 w-full h-auto select-none"
-              style={{
-                opacity: staticOpacity,
-                transition: `opacity ${FADE_DURATION}ms ease`,
-              }}
             />
-
-            {/* GIF IMAGE - mounted only when playing */}
-            {gifSrc && (
-              <img
-                key={gifSrc}
-                src={gifSrc}
-                alt="Patriot Index animation"
-                className="absolute inset-0 w-full h-auto select-none"
-                style={{
-                  opacity: gifOpacity,
-                  transition: `opacity ${FADE_DURATION}ms ease`,
-                }}
-              />
-            )}
 
             {/* Layout spacer */}
             <img

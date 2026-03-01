@@ -780,6 +780,20 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
               onClose={() => hideProfile(() => { setSelectedPolitician(null); })}
               onGoToParty={handleGoToParty}
               onCompare={(pol) => startCompare("politician", pol)}
+              onFilterByRegion={(region) => {
+                if (!activeFilters.includes("kraje")) setActiveFilters((prev) => [...prev, "kraje"]);
+                setSelectedRegion(region);
+                schematicRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              onFilterByAge={(birthDate) => {
+                const age = getAge(birthDate);
+                const bracket = AGE_BRACKETS.find(b => age >= b.min && age <= b.max);
+                if (bracket) {
+                  if (!activeFilters.includes("vek")) setActiveFilters((prev) => [...prev, "vek"]);
+                  setSelectedAge(bracket.key);
+                  schematicRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
             />
           ) : selectedPartyProfile ? (
             <>
