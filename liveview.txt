@@ -1,0 +1,109 @@
+================================================================================
+LIVE VIEW BOX - DOKUMENTACE
+================================================================================
+
+PREHLED
+-------
+Live View box je interaktivni "slot machine" komponenta na hlavni strance,
+ktera zobrazuje politiky s nejvetsimi zmenami skore. Nachazi se v souboru:
+
+  components/about-section.tsx
+
+
+JAK FUNGUJE
+-----------
+
+1. DATA:
+   - Vola generatePoliticians() z lib/parliament-data.ts
+   - Pro kazdeho politika spocita prumernou zmenu za posledni 3 hlasovani
+   - Seradi politiky podle absolutni hodnoty prumerne zmeny (od nejvetsi)
+   - Zobrazi 4 politiky na stranku, celkem max 20 (5 stranek)
+
+2. SLOT MACHINE MECHANIKA:
+   - Uzivatel klikne na paku (SlotLever) na prave strane boxu
+   - Po kliknuti: paka se stlaci (animace 350ms), spusti se "spinning"
+   - Behem spinningu (1800ms) se kazdych 200ms meni stranka
+   - Po zastaveni se karty postupne odhaluji s odstupem 300ms (stagger efekt)
+   - Kazda karta ma animaci "odhaleni" - blur efekt se zrusi a karta prijede zleva
+
+3. SLOZENI BOXU:
+   - Horni lista:  "Posledni zakon" - zobrazuje nazev posledniho zakona z LAW_NAMES
+   - Nadpis:       "Nejvice se meni" s pulzujicim cervenym bodem
+   - 4x SlotCard:  Karty s politiky (foto, jmeno, strana, skore, zmena)
+   - Paticka:      Cislo stranky a informace o zobrazeni
+   - Paka:         SVG lever na prave strane
+
+
+KOMPONENTY
+----------
+
+SlotLever:
+  - SVG paka ve tvaru L (horizontalni rameno + vertikalni tyc + cervena kulicka)
+  - Props: pulled (boolean), onPull (callback)
+  - Animace stlaceni pres CSS transition na SVG atributech
+
+SlotCard:
+  - Zobrazuje jednoho politika s jeho skore a zmenou
+  - Props: pol (data politika), isSpinning, revealDelay, slotKey
+  - Behem spinningu zobrazuje blurry overlay s horizontalni animaci
+  - Po zastaveni se s revealDelay animuje vstup karty
+
+  Barvy zmen:
+  - Kladna zmena: #22c55e (zelena)
+  - Zaporna zmena: #ef4444 (cervena)
+  - Tyto barvy se NEmenily na salmon red, protoze jsou to "score changes"
+
+
+JAK UPRAVIT POCET ZOBRAZENÝCH POLITIKU
+---------------------------------------
+V about-section.tsx:
+
+  const maxPages = Math.ceil(Math.min(allTrending.length, 20) / 4);
+  const displayedPoliticians = allTrending.slice(slotPage * 4, slotPage * 4 + 4);
+
+- Cislo 20: maximalni pocet politiku celkem
+- Cislo 4:  pocet politiku na stranku
+- Zmenou techto cisel upravite rozsah a strankovani
+
+
+JAK UPRAVIT RYCHLOST SLOT MACHINE
+-----------------------------------
+V about-section.tsx, funkce pullLever():
+
+  const spinDuration = 1800;   // Celkova doba spinningu v ms
+  const spinInterval = 200;    // Jak casto se meni stranka behem spinningu
+
+V komponents SlotCard:
+  revealDelay={i * 300}        // Odstup mezi odhalenim jednotlivych karet (300ms)
+
+
+JAK ZMENIT POSLEDNI ZAKON
+---------------------------
+"Posledni zakon" se bere z:
+  const latestLaw = LAW_NAMES[LAW_NAMES.length - 1];
+
+Takze staci pridat novy zakon na konec pole LAW_NAMES v lib/parliament-data.ts.
+
+
+JAK ZMENIT METRIKU HODNOCENI
+------------------------------
+Aktualne se pouziva prumer za posledni 3 hlasovani:
+
+  const lastThree = pol.voteHistory.slice(-3);
+  const avgChange = lastThree.length > 0
+    ? Math.round(lastThree.reduce((s, v) => s + v.scoreChange, 0) / lastThree.length)
+    : 0;
+
+Muzete zmenit na:
+- Posledni hlasovani: pol.voteHistory.slice(-1)
+- Posledních 5: pol.voteHistory.slice(-5)
+- Celkovy soucet: pol.voteHistory (bez slice)
+
+Razeni je podle absolutni hodnoty:
+  withAvgChange.sort((a, b) => Math.abs(b.lastChange) - Math.abs(a.lastChange));
+
+
+STRUKTURA SOUBORU
+-----------------
+  components/about-section.tsx   - Hlavni komponenta (SlotLever, SlotCard, AboutSection)
+  lib/parliament-data.ts         - Data politiku a LAW_NAMES

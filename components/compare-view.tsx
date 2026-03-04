@@ -144,6 +144,9 @@ function CompareCard({ item, politicians, color }: { item: CompareItem; politici
         </div>
         <div className="flex flex-col items-center p-3 border border-border bg-background flex-1">
           <span className="text-xs font-mono uppercase text-muted-foreground">{"Zm\u011bna"}</span>
+          <span className="text-lg font-bold font-mono" style={{ color: changeCol }}>
+            {change >= 0 ? "+" : ""}{change}
+          </span>
         </div>
       </div>
 

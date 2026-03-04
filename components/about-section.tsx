@@ -237,13 +237,13 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
-            <div className="flex flex-col gap-2 p-4 border border-border">
-              <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary font-mono leading-tight break-words">{"Nikomu nenadržujeme."}</span>
-              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed">{"Stranická příslušnost se skórem nepohne."}</span>
+            <div className="flex flex-col gap-2 p-4 border border-border min-w-0">
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary font-mono leading-tight" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Nikomu nenadržujeme."}</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Stranická příslušnost se skórem nepohne."}</span>
             </div>
-            <div className="flex flex-col gap-2 p-4 border border-border">
-              <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary font-mono leading-tight break-words">{"Spolupracujeme s odborníky."}</span>
-              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed">{"Zákonné analýzy hodnotíme ve spolupráci s kvalifikovanými experty."}</span>
+            <div className="flex flex-col gap-2 p-4 border border-border min-w-0">
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary font-mono leading-tight" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Spolupracujeme s odborníky."}</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Zákonné analýzy hodnotíme ve spolupráci s kvalifikovanými experty."}</span>
             </div>
           </div>
         </div>
@@ -313,7 +313,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
             <button
               type="button"
               onClick={onNavigateToLaws}
-              className="mt-6 w-full flex items-center justify-center gap-3 px-6 py-4 border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all bg-transparent group"
+              className="mt-6 w-full flex items-center justify-center gap-3 px-6 py-4 border-2 border-primary/60 text-primary hover:bg-primary hover:text-primary-foreground transition-all bg-transparent group"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="flex-shrink-0">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
