@@ -193,79 +193,132 @@ export function generatePoliticians(): Politician[] {
 
 
 /**
- * EU Parliament hemicycle style seating.
+ * EU Parliament hemicycle - brick-staggered layout.
  * 
- * Generates exactly 200 seats in party order with visible gaps between parties.
- * Each party's seats are distributed across all rows proportionally.
+ * Key features:
+ * - Exactly 200 seats in party order
+ * - Fixed seats per row for uniform density
+ * - Brick-like stagger between alternating rows
+ * - Clear gaps between party wedges
+ * - Symmetrical, wide layout
  */
 export function generateSeatPositions(_totalSeats: number) {
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
-  const centerY = 58;
+  const centerY = 55;
 
-  // Hemicycle configuration
-  const rows = 10;
-  const innerRadius = 14;
-  const outerRadius = 52;
-  const rowSpacing = (outerRadius - innerRadius) / (rows - 1);
+  // Fixed seat counts per row (inner to outer) = 200 total
+  // Designed for even visual density and brick stagger effect
+  const seatsPerRow = [11, 14, 17, 20, 22, 24, 26, 28, 30, 8]; // = 200
+  const rows = seatsPerRow.length;
+  
+  // Radii - generous spacing between rows
+  const innerRadius = 15;
+  const rowGap = 4.2;
+  
+  // Angular span - wide semicircle
+  const startAngle = Math.PI * 0.03;
+  const endAngle = Math.PI * 0.97;
 
-  // Angular span
-  const startAngle = Math.PI * 0.04;
-  const endAngle = Math.PI * 0.96;
-  const fullAngle = endAngle - startAngle;
-
-  // Party seats (left to right): SPD, Motoriste, ANO, ODS, KDU-CSL, TOP09, STAN, Pirati
-  const partySeats = [15, 13, 80, 27, 16, 9, 22, 18];
-  const totalSeats = 200;
-  const numParties = partySeats.length;
-
-  // Gap between parties
-  const gapAngle = 0.025;
-  const totalGaps = gapAngle * (numParties - 1);
-  const usableAngle = fullAngle - totalGaps;
-
-  // Row radii
-  const rowRadii = Array.from({ length: rows }, (_, r) => innerRadius + r * rowSpacing);
-  const totalArcWeight = rowRadii.reduce((sum, r) => sum + r, 0);
-
-  // Process each party - place their seats in angular wedges
-  let currentAngle = startAngle;
-
-  for (let p = 0; p < numParties; p++) {
-    const seats = partySeats[p];
-    const partyAngle = (seats / totalSeats) * usableAngle;
-
-    // Distribute this party's seats across rows (proportional to radius)
-    const rowAlloc: number[] = rowRadii.map(r => Math.round((r / totalArcWeight) * seats));
+  // Generate all seat positions row by row
+  for (let r = 0; r < rows; r++) {
+    const count = seatsPerRow[r];
+    const radius = innerRadius + r * rowGap;
     
-    // Fix rounding to match exact seat count
-    let allocated = rowAlloc.reduce((a, b) => a + b, 0);
-    let diff = seats - allocated;
-    for (let r = rows - 1; r >= 0 && diff > 0; r--) { rowAlloc[r]++; diff--; }
-    for (let r = 0; r < rows && diff < 0; r++) { if (rowAlloc[r] > 0) { rowAlloc[r]--; diff++; } }
-
-    // Place seats for this party, row by row
-    for (let r = 0; r < rows; r++) {
-      const count = rowAlloc[r];
-      if (count === 0) continue;
-
-      const radius = rowRadii[r];
-      // Spread seats evenly within party's angular wedge
-      const angleStep = count > 1 ? partyAngle / (count - 1) : 0;
-      const rowStart = count === 1 ? currentAngle + partyAngle / 2 : currentAngle;
-
-      for (let s = 0; s < count; s++) {
-        const angle = rowStart + s * angleStep;
-        const x = centerX - radius * Math.cos(angle);
-        const y = centerY - radius * Math.sin(angle);
-        positions.push({ x, y, row: r });
-      }
+    // Brick stagger: odd rows get half-seat angular offset
+    const staggerOffset = (r % 2 === 1) ? 0.5 : 0;
+    
+    for (let s = 0; s < count; s++) {
+      // Position along the arc with stagger
+      const t = (s + staggerOffset) / count;
+      const angle = startAngle + t * (endAngle - startAngle);
+      
+      const x = centerX - radius * Math.cos(angle);
+      const y = centerY - radius * Math.sin(angle);
+      positions.push({ x, y, row: r });
     }
-
-    currentAngle += partyAngle + gapAngle;
   }
 
   return positions;
+}
+
+/**
+ * Maps politicians to seats with party grouping and gaps.
+ * Seats are assigned so each party forms a contiguous wedge.
+ */
+export function createPartyWedgeMapping(
+  seatPositions: Array<{ x: number; y: number; row: number }>,
+  politicians: Politician[],
+): number[] {
+  const centerX = 50;
+  const centerY = 55;
+  
+  // Sort all seats by angle (left to right in the hemicycle)
+  const seatsWithAngles = seatPositions.map((seat, idx) => ({
+    idx,
+    angle: Math.atan2(centerY - seat.y, seat.x - centerX),
+    row: seat.row,
+  }));
+  seatsWithAngles.sort((a, b) => b.angle - a.angle); // Higher angle = more left
+  
+  // Party seats: SPD 15, Motoriste 13, ANO 80, ODS 27, KDU-CSL 16, TOP09 9, STAN 22, Pirati 18
+  const partySeatCounts = [15, 13, 80, 27, 16, 9, 22, 18];
+  const numParties = partySeatCounts.length;
+  
+  // Gap: skip some seats between parties (creates visual separation)
+  const gapSeats = 1;
+  
+  // Calculate how many seats each party gets from the sorted list
+  const mapping: number[] = new Array(politicians.length);
+  let seatCursor = 0;
+  let polCursor = 0;
+  
+  for (let p = 0; p < numParties; p++) {
+    const partySize = partySeatCounts[p];
+    
+    // Get seats for this party
+    const partySeats: typeof seatsWithAngles = [];
+    for (let i = 0; i < partySize && seatCursor < seatsWithAngles.length; i++) {
+      partySeats.push(seatsWithAngles[seatCursor]);
+      seatCursor++;
+    }
+    
+    // Sort party seats by row (inner first), then by angle within row
+    // This creates nice visual flow within each party wedge
+    partySeats.sort((a, b) => {
+      if (a.row !== b.row) return a.row - b.row;
+      return b.angle - a.angle;
+    });
+    
+    // Assign politicians to these seats
+    for (const seat of partySeats) {
+      if (polCursor < politicians.length) {
+        mapping[polCursor] = seat.idx;
+        polCursor++;
+      }
+    }
+    
+    // Skip gap seats between parties (except after last party)
+    if (p < numParties - 1) {
+      seatCursor += gapSeats;
+    }
+  }
+  
+  // Fill any remaining politicians with leftover seats
+  const usedSeats = new Set(mapping.filter(m => m !== undefined));
+  for (let i = 0; i < politicians.length; i++) {
+    if (mapping[i] === undefined) {
+      for (const seat of seatsWithAngles) {
+        if (!usedSeats.has(seat.idx)) {
+          mapping[i] = seat.idx;
+          usedSeats.add(seat.idx);
+          break;
+        }
+      }
+    }
+  }
+  
+  return mapping;
 }
 
 // =============================================================================

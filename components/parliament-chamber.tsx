@@ -10,6 +10,7 @@ import {
   PARTIES,
   generatePoliticians,
   generateSeatPositions,
+  createPartyWedgeMapping,
   loadFromApi,
   mergeApiData,
   getAge,
@@ -53,16 +54,12 @@ function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-/**
- * Direct 1:1 mapping - seats are now generated in party order by generateSeatPositions.
- * Politician index i maps to seat index i.
- */
+// Use the exported createPartyWedgeMapping from parliament-data.ts
 function createWedgeMapping(
   seatPositions: Array<{ x: number; y: number; row: number }>,
   politicians: Politician[],
 ): number[] {
-  // Direct mapping: politician i -> seat i
-  return politicians.map((_, i) => i < seatPositions.length ? i : 0);
+  return createPartyWedgeMapping(seatPositions, politicians);
 }
 
 // Search component for finding politicians
@@ -280,8 +277,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const activeParties = PARTIES.filter((p) => p.seats > 0);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
 
-  // Seat radius -- small circles like EU Parliament style
-  const seatRadius = 1.7;
+  // Seat radius -- sized for clear visibility with good spacing
+  const seatRadius = 1.5;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
@@ -611,8 +608,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
       {/* Chamber SVG */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg" onMouseMove={handleMouseMove}>
-        <div ref={schematicRef} className="w-full max-w-[1400px] mx-auto" style={{ aspectRatio: "1.8 / 1" }}>
-          <svg ref={svgRef} viewBox="-2 2 104 60" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
+        <div ref={schematicRef} className="w-full max-w-full mx-auto" style={{ aspectRatio: "2.2 / 1" }}>
+          <svg ref={svgRef} viewBox="-5 8 110 52" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
             {politicians.map((pol, polIndex) => {
               const seatIdx = wedgeMapping[polIndex];
               const seat = seatPositions[seatIdx];
