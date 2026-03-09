@@ -277,8 +277,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const activeParties = PARTIES.filter((p) => p.seats > 0);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
 
-  // Seat radius -- sized for clear visibility with good spacing
-  const seatRadius = 1.5;
+  // Seat radius -- sized to fit initials clearly
+  const seatRadius = 1.9;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
@@ -462,8 +462,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="relative flex items-center justify-between px-6 py-4 border-b border-border">
+      {/* Header - sticky */}
+      <header className="sticky top-0 z-50 relative flex items-center justify-between px-6 py-4 border-b border-border bg-background/95 backdrop-blur-sm">
         <button onClick={onBack} type="button" className="flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors z-10">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           {"Zp\u011bt"}
@@ -608,8 +608,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
       {/* Chamber SVG */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg" onMouseMove={handleMouseMove}>
-        <div ref={schematicRef} className="w-full max-w-full mx-auto" style={{ aspectRatio: "2.2 / 1" }}>
-          <svg ref={svgRef} viewBox="-5 8 110 52" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
+        <div ref={schematicRef} className="w-full max-w-full mx-auto" style={{ aspectRatio: "2.4 / 1" }}>
+          <svg ref={svgRef} viewBox="-5 4 110 55" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
             {politicians.map((pol, polIndex) => {
               const seatIdx = wedgeMapping[polIndex];
               const seat = seatPositions[seatIdx];

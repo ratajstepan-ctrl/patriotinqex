@@ -193,45 +193,49 @@ export function generatePoliticians(): Politician[] {
 
 
 /**
- * EU Parliament hemicycle - brick-staggered layout.
+ * EU Parliament hemicycle - symmetrical brick-staggered layout.
  * 
  * Key features:
- * - Exactly 200 seats in party order
- * - Fixed seats per row for uniform density
+ * - Exactly 200 seats
+ * - Progressively more seats in outer rows (proportional to arc length)
  * - Brick-like stagger between alternating rows
- * - Clear gaps between party wedges
- * - Symmetrical, wide layout
+ * - Perfectly symmetrical left-to-right
  */
 export function generateSeatPositions(_totalSeats: number) {
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
-  const centerY = 55;
+  const centerY = 52;
 
   // Fixed seat counts per row (inner to outer) = 200 total
-  // Designed for even visual density and brick stagger effect
-  const seatsPerRow = [11, 14, 17, 20, 22, 24, 26, 28, 30, 8]; // = 200
+  // Progressive increase for even visual density
+  const seatsPerRow = [12, 15, 18, 20, 22, 24, 26, 28, 30, 5]; // = 200
   const rows = seatsPerRow.length;
   
-  // Radii - generous spacing between rows
-  const innerRadius = 15;
-  const rowGap = 4.2;
+  // Radii - good spacing between rows
+  const innerRadius = 12;
+  const rowGap = 4.0;
   
-  // Angular span - wide semicircle
-  const startAngle = Math.PI * 0.03;
-  const endAngle = Math.PI * 0.97;
+  // Angular span - symmetrical semicircle
+  const startAngle = Math.PI * 0.04;
+  const endAngle = Math.PI * 0.96;
+  const angleSpan = endAngle - startAngle;
 
   // Generate all seat positions row by row
   for (let r = 0; r < rows; r++) {
     const count = seatsPerRow[r];
     const radius = innerRadius + r * rowGap;
     
-    // Brick stagger: odd rows get half-seat angular offset
-    const staggerOffset = (r % 2 === 1) ? 0.5 : 0;
+    // Calculate angular step for this row
+    const angleStep = angleSpan / (count - 1);
+    
+    // Brick stagger: odd rows offset by half an angular step
+    const staggerOffset = (r % 2 === 1) ? angleStep * 0.5 : 0;
     
     for (let s = 0; s < count; s++) {
-      // Position along the arc with stagger
-      const t = (s + staggerOffset) / count;
-      const angle = startAngle + t * (endAngle - startAngle);
+      // Calculate angle with stagger, clamped to valid range
+      let angle = startAngle + s * angleStep + staggerOffset;
+      // Ensure we don't exceed the end angle
+      angle = Math.min(angle, endAngle);
       
       const x = centerX - radius * Math.cos(angle);
       const y = centerY - radius * Math.sin(angle);
