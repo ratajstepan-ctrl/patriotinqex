@@ -65,20 +65,25 @@ export function PageRouter() {
     [isAnimating],
   );
 
+  // Set initial history state on mount only
+  useEffect(() => {
+    window.history.replaceState({ page: "landing" }, "", "");
+  }, []);
+
   // Listen for browser back/forward buttons
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       const page = (event.state?.page as ActivePage) || "landing";
       isPopstateNav.current = true;
-      navigateTo(page, false);
+      // Use setTimeout to avoid setState during render
+      setTimeout(() => {
+        navigateTo(page, false);
+      }, 0);
     };
-
-    // Set initial history state
-    window.history.replaceState({ page: activePage }, "", activePage === "landing" ? "" : `#${activePage}`);
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [navigateTo, activePage]);
+  }, [navigateTo]);
 
   const handleEnterParliament = useCallback(() => navigateTo("parliament"), [navigateTo]);
   const handleBack = useCallback(() => {
