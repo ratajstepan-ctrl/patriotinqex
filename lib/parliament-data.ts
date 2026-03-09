@@ -193,76 +193,93 @@ export function generatePoliticians(): Politician[] {
 
 
 /**
- * Generate semicircular seating arrangement (Wikipedia-style).
- * - Exactly 200 seats, no more, no less
- * - Wider semicircle with fewer rows (7 rows like Wikipedia)
- * - Each row proportional to arc length
+ * Generate semicircular seating with party wedges and gaps.
+ * 
+ * Each party gets its own wedge, with small angular gaps between parties
+ * and a tiny radial offset to visually separate wedges.
+ * 
+ * Returns exactly 200 seats in party order (SPD, Motoriste, ANO, ODS, KDU-CSL, TOP09, STAN, Pirati).
  */
-export function generateSeatPositions(totalSeats: number) {
+export function generateSeatPositions(_totalSeats: number) {
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
-  const centerY = 98; // Lower center for wider semicircle
+  const centerY = 75; // Moved up to reduce overall height
 
-  const rows = 7;
-  const minRadius = 18;
-  const maxRadius = 92;
+  const rows = 6;
+  const minRadius = 20;
+  const maxRadius = 70;
   const radiusStep = (maxRadius - minRadius) / (rows - 1);
 
-  // Wider angle span (more horizontal spread)
-  const startAngle = Math.PI * 0.02;
-  const endAngle = Math.PI * 0.98;
-  const angleSpan = endAngle - startAngle;
+  // Angular range
+  const startAngle = Math.PI * 0.04;
+  const endAngle = Math.PI * 0.96;
+  const fullAngleSpan = endAngle - startAngle;
 
+  // Party seats in order (left to right in semicircle)
+  const partySeats = [15, 13, 80, 27, 16, 9, 22, 18]; // SPD, Motoriste, ANO, ODS, KDU-CSL, TOP09, STAN, Pirati
+  const totalSeats = partySeats.reduce((a, b) => a + b, 0); // 200
+  const numParties = partySeats.length;
+
+  // Angular gap between parties
+  const gapAngle = 0.02;
+  const totalGapAngle = gapAngle * (numParties - 1);
+  const usableAngle = fullAngleSpan - totalGapAngle;
+
+  // Radial offset per party (alternating slightly in/out for separation)
+  const radialOffsets = [0, 0.8, 0, 0.8, 0, 0.8, 0, 0.8];
+
+  // Calculate row capacities (proportional to arc length)
   const rowRadii: number[] = [];
   let totalArc = 0;
   for (let r = 0; r < rows; r++) {
     const radius = minRadius + r * radiusStep;
     rowRadii.push(radius);
-    totalArc += radius * angleSpan;
+    totalArc += radius;
   }
 
-  // Proportional seat distribution by arc length
-  const rawSeats: number[] = [];
-  for (let r = 0; r < rows; r++) {
-    rawSeats.push((rowRadii[r] * angleSpan / totalArc) * totalSeats);
-  }
+  // Process each party
+  let angleOffset = startAngle;
+  let seatGlobalIdx = 0;
 
-  // Round while keeping total exactly correct
-  const rowSeats: number[] = rawSeats.map((s) => Math.round(s));
-  let diff = totalSeats - rowSeats.reduce((a, b) => a + b, 0);
-  while (diff !== 0) {
-    if (diff > 0) {
-      for (let r = rows - 1; r >= 0 && diff > 0; r--) {
-        rowSeats[r]++;
-        diff--;
-      }
-    } else {
-      for (let r = 0; r < rows && diff < 0; r++) {
-        if (rowSeats[r] > 3) {
-          rowSeats[r]--;
-          diff++;
-        }
+  for (let p = 0; p < numParties; p++) {
+    const seats = partySeats[p];
+    const partyAngle = (seats / totalSeats) * usableAngle;
+    const radialOffset = radialOffsets[p];
+
+    // Distribute this party's seats across rows proportionally
+    const rowAlloc: number[] = [];
+    let allocated = 0;
+    for (let r = 0; r < rows; r++) {
+      const proportion = rowRadii[r] / totalArc;
+      const raw = proportion * seats;
+      const count = Math.round(raw);
+      rowAlloc.push(count);
+      allocated += count;
+    }
+    // Fix rounding errors
+    let diff = seats - allocated;
+    for (let r = rows - 1; r >= 0 && diff > 0; r--) { rowAlloc[r]++; diff--; }
+    for (let r = 0; r < rows && diff < 0; r++) { if (rowAlloc[r] > 0) { rowAlloc[r]--; diff++; } }
+
+    // Place seats for this party
+    for (let r = 0; r < rows; r++) {
+      const count = rowAlloc[r];
+      if (count <= 0) continue;
+      
+      const radius = rowRadii[r] + radialOffset;
+      const angleStep = count > 1 ? partyAngle / (count - 1) : 0;
+      const rowStartAngle = angleOffset + (count === 1 ? partyAngle / 2 : 0);
+
+      for (let s = 0; s < count; s++) {
+        const angle = rowStartAngle + s * angleStep;
+        const x = centerX - radius * Math.cos(angle);
+        const y = centerY - radius * Math.sin(angle);
+        positions.push({ x, y, row: r });
+        seatGlobalIdx++;
       }
     }
-  }
 
-  // Generate seat positions row by row
-  let seatIndex = 0;
-  for (let row = 0; row < rows && seatIndex < totalSeats; row++) {
-    const radius = rowRadii[row];
-    const seatsInRow = Math.min(rowSeats[row], totalSeats - seatIndex);
-    if (seatsInRow <= 0) continue;
-    
-    // Distribute seats evenly across the arc
-    const angleStep = angleSpan / Math.max(seatsInRow - 1, 1);
-
-    for (let s = 0; s < seatsInRow && seatIndex < totalSeats; s++) {
-      const angle = startAngle + s * angleStep;
-      const x = centerX - radius * Math.cos(angle);
-      const y = centerY - radius * Math.sin(angle);
-      positions.push({ x, y, row });
-      seatIndex++;
-    }
+    angleOffset += partyAngle + gapAngle;
   }
 
   return positions;

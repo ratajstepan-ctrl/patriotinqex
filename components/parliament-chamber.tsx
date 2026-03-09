@@ -54,112 +54,15 @@ function getInitials(name: string): string {
 }
 
 /**
- * Wikipedia-style wedge layout with party cohesion.
- * 
- * Each party gets a proportional angular wedge. Within each wedge,
- * the party's members are distributed across ALL rows, filling from
- * the center outward. This ensures each party is visually cohesive
- * with representation in every row.
- * 
- * Angular gaps between parties create the "pie slice" separation effect.
+ * Direct 1:1 mapping - seats are now generated in party order by generateSeatPositions.
+ * Politician index i maps to seat index i.
  */
 function createWedgeMapping(
   seatPositions: Array<{ x: number; y: number; row: number }>,
   politicians: Politician[],
 ): number[] {
-  const centerX = 50;
-  const centerY = 98;
-  const totalSeats = 200;
-  
-  // Gap between parties (in radians) - creates visual separation
-  const gapAngle = 0.025;
-  const numParties = PARTIES.length;
-  const totalGapAngle = gapAngle * (numParties - 1);
-  
-  // Total angle available for seats (excluding gaps)
-  const fullAngleSpan = Math.PI * 0.96; // matches seat generation
-  const usableAngle = fullAngleSpan - totalGapAngle;
-
-  // Calculate each party's angular boundaries
-  const partyBoundaries: { party: string; startAngle: number; endAngle: number; seats: number; polStartIdx: number }[] = [];
-  let angleOffset = Math.PI * 0.02; // start angle
-  let polIdx = 0;
-  
-  for (const party of PARTIES) {
-    const partyAngle = (party.seats / totalSeats) * usableAngle;
-    partyBoundaries.push({
-      party: party.name,
-      startAngle: angleOffset,
-      endAngle: angleOffset + partyAngle,
-      seats: party.seats,
-      polStartIdx: polIdx,
-    });
-    polIdx += party.seats;
-    angleOffset += partyAngle + gapAngle;
-  }
-
-  // Assign each seat to a party based on its angle
-  const seatsWithMeta = seatPositions.map((seat, i) => {
-    const angle = Math.atan2(centerY - seat.y, seat.x - centerX);
-    // Find which party this seat belongs to
-    let assignedParty: typeof partyBoundaries[0] | null = null;
-    for (const pb of partyBoundaries) {
-      if (angle >= pb.startAngle && angle <= pb.endAngle) {
-        assignedParty = pb;
-        break;
-      }
-    }
-    return {
-      index: i,
-      angle,
-      row: seat.row,
-      party: assignedParty,
-    };
-  });
-
-  // Group seats by party
-  const seatsByParty = new Map<string, typeof seatsWithMeta>();
-  for (const pb of partyBoundaries) {
-    seatsByParty.set(pb.party, []);
-  }
-  for (const seat of seatsWithMeta) {
-    if (seat.party) {
-      seatsByParty.get(seat.party.party)!.push(seat);
-    }
-  }
-
-  // Create the mapping
-  const mapping = new Array<number>(politicians.length);
-
-  for (const pb of partyBoundaries) {
-    const partySeats = seatsByParty.get(pb.party) || [];
-    
-    // Sort party seats: by row first (inner to outer), then by angle within row
-    // This creates nice cohesive blocks
-    partySeats.sort((a, b) => {
-      if (a.row !== b.row) return a.row - b.row;
-      return a.angle - b.angle;
-    });
-
-    // Assign politicians to seats
-    for (let i = 0; i < pb.seats && i < partySeats.length; i++) {
-      mapping[pb.polStartIdx + i] = partySeats[i].index;
-    }
-  }
-
-  // Handle any edge cases where seats weren't assigned
-  const usedSeats = new Set(mapping.filter((m) => m !== undefined));
-  const unusedSeats = seatsWithMeta.filter(s => !usedSeats.has(s.index));
-  let unusedIdx = 0;
-  
-  for (let i = 0; i < politicians.length; i++) {
-    if (mapping[i] === undefined && unusedIdx < unusedSeats.length) {
-      mapping[i] = unusedSeats[unusedIdx].index;
-      unusedIdx++;
-    }
-  }
-
-  return mapping;
+  // Direct mapping: politician i -> seat i
+  return politicians.map((_, i) => i < seatPositions.length ? i : 0);
 }
 
 // Search component for finding politicians
@@ -377,8 +280,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const activeParties = PARTIES.filter((p) => p.seats > 0);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
 
-  // Seat radius -- slightly smaller for more breathing room, keep letters same size
-  const seatRadius = 2.9;
+  // Seat radius -- sized for 6 rows with good spacing
+  const seatRadius = 2.6;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
@@ -708,8 +611,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
       {/* Chamber SVG */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg" onMouseMove={handleMouseMove}>
-        <div ref={schematicRef} className="w-full max-w-[1900px] mx-auto" style={{ aspectRatio: "2.1 / 1" }}>
-          <svg ref={svgRef} viewBox="-2 -2 104 100" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
+        <div ref={schematicRef} className="w-full max-w-[1400px] mx-auto" style={{ aspectRatio: "2.5 / 1" }}>
+          <svg ref={svgRef} viewBox="-2 0 104 78" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
             {politicians.map((pol, polIndex) => {
               const seatIdx = wedgeMapping[polIndex];
               const seat = seatPositions[seatIdx];
