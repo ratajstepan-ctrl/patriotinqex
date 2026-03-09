@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { generatePoliticians, LAW_NAMES } from "@/lib/parliament-data";
+import { Politician, LAW_NAMES } from "@/lib/parliament-data";
 
 // L-shaped slot machine lever: horizontal arm from box, bends 90deg up, ends in red ball
 function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) {
