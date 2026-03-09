@@ -206,8 +206,8 @@ export function generateSeatPositions(_totalSeats: number) {
   const centerY = 75; // Moved up to reduce overall height
 
   const rows = 6;
-  const minRadius = 20;
-  const maxRadius = 70;
+  const minRadius = 18;
+  const maxRadius = 62; // Reduced to give more spacing between seats
   const radiusStep = (maxRadius - minRadius) / (rows - 1);
 
   // Angular range
@@ -220,13 +220,13 @@ export function generateSeatPositions(_totalSeats: number) {
   const totalSeats = partySeats.reduce((a, b) => a + b, 0); // 200
   const numParties = partySeats.length;
 
-  // Angular gap between parties
-  const gapAngle = 0.02;
+  // Angular gap between parties (increased for better visual separation)
+  const gapAngle = 0.045;
   const totalGapAngle = gapAngle * (numParties - 1);
   const usableAngle = fullAngleSpan - totalGapAngle;
 
-  // Radial offset per party (alternating slightly in/out for separation)
-  const radialOffsets = [0, 0.8, 0, 0.8, 0, 0.8, 0, 0.8];
+  // Radial offset per party (alternating in/out to push wedges apart)
+  const radialOffsets = [0, 1.2, 0, 1.2, 0, 1.2, 0, 1.2];
 
   // Calculate row capacities (proportional to arc length)
   const rowRadii: number[] = [];

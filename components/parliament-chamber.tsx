@@ -280,8 +280,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const activeParties = PARTIES.filter((p) => p.seats > 0);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
 
-  // Seat radius -- sized for 6 rows with good spacing
-  const seatRadius = 2.6;
+  // Seat radius -- smaller for better spacing between seats
+  const seatRadius = 2.2;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
@@ -833,7 +833,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
           {[
                 {
             q: "Co je Patriot Index?",
-            a: "Sledujeme a vyhodnocujeme hlasování v Poslanecké sněmovně, protože věříme, že skutečná politika se neodehrává v prohlášeních ani v předvolebních sloganech, ale při hlasování o zákonech. Zaměřujeme se především na zákony, které ovlivňují národní suverenitu, prosperitu, sílu státu, bezpečnost a identitu země. Každý z těchto zákonů hodnotíme podle jeho významu i podle konkrétních důsledků, které může mít pro budoucnost České republiky. Naším cílem je přinášet srozumitelný a férový přehled o tom, jak jednotliví poslanci skutečně hlasují. Nehodnotíme slova ani politické značky – hodnotíme pouze zákony a hlasování. Na základě toho poslancům přidělujeme nebo odečítáme body, a to podle stejných pravidel pro všechny."
+            a: "Sledujeme a vyhodnocujeme hlasování v Poslanecké sněmovně, protože věříme, že skutečná politika se neodehrává v prohlášeních ani v předvolebních sloganech, ale při hlasování o zákonech. Zaměřujeme se především na zákony, které ovlivňují národní suverenitu, prosperitu, sílu státu, bezpečnost a identitu země. Každý z těchto zákonů hodnotíme podle jeho významu i podle konkrétních důsledků, které může mít pro budoucnost České republiky. Naším c��lem je přinášet srozumitelný a férový přehled o tom, jak jednotliví poslanci skutečně hlasují. Nehodnotíme slova ani politické značky – hodnotíme pouze zákony a hlasování. Na základě toho poslancům přidělujeme nebo odečítáme body, a to podle stejných pravidel pro všechny."
           },
           {
             q: "Jak se po\u010d\u00edt\u00e1 sk\u00f3re?",

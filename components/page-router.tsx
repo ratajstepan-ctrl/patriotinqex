@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { AboutSection } from "@/components/about-section";
@@ -14,11 +14,24 @@ export function PageRouter() {
   const [activePage, setActivePage] = useState<ActivePage>("landing");
   const [isAnimating, setIsAnimating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isPopstateNav = useRef(false);
+
+  // Internal navigation without animation (for popstate)
+  const setPageDirect = useCallback((page: ActivePage) => {
+    setActivePage(page);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
 
   const navigateTo = useCallback(
-    (target: ActivePage) => {
+    (target: ActivePage, pushHistory = true) => {
       if (isAnimating) return;
       setIsAnimating(true);
+
+      // Push to browser history (unless triggered by popstate)
+      if (pushHistory && !isPopstateNav.current) {
+        window.history.pushState({ page: target }, "", `#${target}`);
+      }
+      isPopstateNav.current = false;
 
       const el = containerRef.current;
       if (!el) {
@@ -52,10 +65,30 @@ export function PageRouter() {
     [isAnimating],
   );
 
+  // Listen for browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const page = (event.state?.page as ActivePage) || "landing";
+      isPopstateNav.current = true;
+      navigateTo(page, false);
+    };
+
+    // Set initial history state
+    window.history.replaceState({ page: activePage }, "", activePage === "landing" ? "" : `#${activePage}`);
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [navigateTo, activePage]);
+
   const handleEnterParliament = useCallback(() => navigateTo("parliament"), [navigateTo]);
-  const handleBack = useCallback(() => navigateTo("landing"), [navigateTo]);
+  const handleBack = useCallback(() => {
+    // Use browser history.back() so back button and our button behave the same
+    window.history.back();
+  }, []);
   const handleGoToLaws = useCallback(() => navigateTo("laws"), [navigateTo]);
-  const handleBackToParliament = useCallback(() => navigateTo("parliament"), [navigateTo]);
+  const handleBackToParliament = useCallback(() => {
+    window.history.back();
+  }, []);
 
   return (
     <div ref={containerRef}>
