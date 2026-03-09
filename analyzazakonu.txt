@@ -1,0 +1,132 @@
+================================================================================
+ANALYZA ZAKONU - DOKUMENTACE
+================================================================================
+
+PREHLED
+-------
+Stranka "Analyzy zakonu" (laws-page.tsx) zobrazuje seznam zakonu hodnocenych
+Patriot Indexem. Data se nacitaji z textoveho souboru:
+
+  public/data/law-analyses.txt
+
+Stranka je pristupna pres tlacitko "Analyzy zakonu" na hlavni strance
+(pod live view boxem) nebo pres navigacni menu ve snemovnim schematu.
+
+
+JAK FUNGUJE NACITANI DAT
+-------------------------
+1. Komponenta LawsPage (components/laws-page.tsx) pri mountu fetchuje:
+     fetch("/data/law-analyses.txt")
+
+2. Text se parsuje funkci parseLawAnalyses(), ktera hleda bloky zacinajici:
+     === LAW_ID: <cislo> ===
+
+3. Kazdy blok obsahuje pole ve formatu "KLIC: HODNOTA":
+   - NAME:      Nazev zakona
+   - DATE:      Datum ve formatu DD.MM.YYYY
+   - CATEGORY:  Kategorie (viz nize)
+   - SUMMARY:   Kratky souhrn (jednoradkovy)
+   - ANALYSIS:  Viceradkovy text analyzy (vse az do dalsiho === nebo konce souboru)
+
+
+JAK PRIDAT NOVY ZAKON
+----------------------
+1. Otevrete soubor: public/data/law-analyses.txt
+2. Na konec souboru pridejte novy blok v tomto formatu:
+
+   === LAW_ID: <dalsi_cislo> ===
+   NAME: Nazev noveho zakona
+   DATE: DD.MM.YYYY
+   CATEGORY: Kategorie
+   SUMMARY: Kratky jednoradkovy popis zakona.
+   ANALYSIS:
+   Zde napiste podrobnou analyzu zakona. Muze byt viceradkova.
+   Podporuje odrazky s pomlckami (-) a prazdne radky pro odstavce.
+
+3. DULEZITE: Cislo LAW_ID musi byt unikatni a idealne navazovat na predchozi.
+
+4. Pokud chcete, aby se zakon zobrazoval i v hlasovani politiku (snemovni
+   schemat), musite jej take pridat do pole LAW_NAMES v souboru:
+     lib/parliament-data.ts
+   (na konec pole, ve stejnem poradi jako LAW_ID)
+
+
+JAK ODEBRAT ZAKON
+------------------
+1. Otevrete: public/data/law-analyses.txt
+2. Smazte cely blok od === LAW_ID: X === az po zacatek dalsiho bloku.
+3. POZOR: Pokud zakon existuje i v LAW_NAMES (lib/parliament-data.ts),
+   jeho odebrani zpusobi nesoulad s hlasovanim. Doporucujeme spise
+   zakon ponechat a aktualizovat analyzu.
+
+
+JAK UPRAVIT ZAKON
+------------------
+1. Otevrete: public/data/law-analyses.txt
+2. Najdete prislusny blok podle LAW_ID nebo NAME.
+3. Upravte libovolne pole (NAME, DATE, CATEGORY, SUMMARY, ANALYSIS).
+4. Ulozte soubor - zmeny se projevi okamzite pri pristim nacteni stranky.
+
+
+KATEGORIE A FILTRY
+------------------
+Kategorie se definuji ve dvou mistech v components/laws-page.tsx:
+
+1. CATEGORY_MAP - Mapovani alternativnich nazvu kategorii na kanonicky tvar.
+   Napriklad "Dane" a "Dane" se oba mapuji na "Ekonomika".
+   Pokud chcete pridat novou kategorii, nemusite ji sem davat - staci ji
+   pouzit primo v CATEGORY poli v law-analyses.txt.
+
+   Pokud chcete, aby vice nazvu odkazovalo na jednu kategorii, pridejte:
+     "Novy nazev": "Existujici kategorie",
+
+2. CATEGORY_COLORS - Barvy pro zobrazeni kategorii v UI.
+   Kazda kategorie ma tri vlastnosti:
+     bg:     pozadi badge (napr. "bg-amber-500/15")
+     text:   barva textu (napr. "text-amber-600 dark:text-amber-400")
+     border: barva ramecku (napr. "border-amber-500/30")
+
+   Pro pridani nove kategorie pridejte novy radek:
+     "Nazev kategorie": {
+       bg: "bg-COLOR-500/15",
+       text: "text-COLOR-600 dark:text-COLOR-400",
+       border: "border-COLOR-500/30"
+     },
+
+   Pokud kategorii do CATEGORY_COLORS nepridete, pouzije se vychozi
+   seda barva (bg-muted).
+
+AKTUALNI KATEGORIE:
+  - Ekonomika       (zluta/amber)
+  - Bezpecnost      (cervena/red)
+  - Obrana          (zelena/emerald)
+  - Energetika      (modra/blue)
+  - Socialni politika (fialova/purple)
+  - Zahranicni politika (cyan)
+  - Legislativa     (oranzova/orange)
+
+
+JAK PREJMENOVT KATEGORII
+--------------------------
+1. Otevrete components/laws-page.tsx
+2. V CATEGORY_COLORS zmente klic (nazev) u prislusne kategorie.
+3. V CATEGORY_MAP aktualizujte mapovani, aby staré nazvy smerovaly na novy.
+4. V law-analyses.txt aktualizujte vsechny CATEGORY pole na novy nazev,
+   NEBO pridejte stary nazev do CATEGORY_MAP aby se automaticky prevedl.
+
+
+JAK PRIDAT NOVY FILTR
+-----------------------
+Filtrovani probiha pres stav filterCategory v komponents LawsPage.
+Aktualne se filtruje pouze podle kategorii. Pro pridani noveho filtru:
+
+1. Pridejte novy stav: const [filterX, setFilterX] = useState(null);
+2. Aktualizujte filteredLaws useMemo aby zahrnoval novou podminku.
+3. Pridejte UI tlacitka filtru do sekce "Category filter" v renderovani.
+
+
+STRUKTURA SOUBORU
+-----------------
+  public/data/law-analyses.txt    - Data zakonu (textovy format)
+  components/laws-page.tsx        - Hlavni komponenta stranky
+  lib/parliament-data.ts          - LAW_NAMES pole (nazvy pro hlasovani)

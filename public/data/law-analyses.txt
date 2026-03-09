@@ -1,0 +1,264 @@
+================================================================================
+PATRIOT INDEX - ANALÝZY ZÁKONŮ
+================================================================================
+Formát: Každý zákon začíná === LAW_ID: <číslo> ===
+Pole jsou ve formátu KLÍČ: HODNOTA. Text analýzy může být víceřádkový.
+Pro přidání nového zákona zkopírujte šablonu na konci souboru.
+
+=== LAW_ID: 1 ===
+NAME: Zákon o státním rozpočtu 2025
+DATE: 15.1.2025
+CATEGORY: Ekonomika
+SUMMARY: Zákon stanovuje příjmy a výdaje státního rozpočtu na rok 2025. Celkové výdaje jsou plánovány na 2,15 bilionu Kč s deficitem 295 miliard Kč.
+ANALYSIS:
+Státní rozpočet na rok 2025 je klíčovým dokumentem, který definuje finanční směřování země. Návrh obsahuje zvýšení výdajů na obranu o 12% oproti minulému roku, což je v souladu se závazky NATO. Zároveň však navrhuje škrty v oblasti sociálního zabezpečení.
+
+Hlavní body:
+- Obrana: 150 mld Kč (navýšení o 12%)
+- Školství: 280 mld Kč (navýšení o 5%)
+- Zdravotnictví: 420 mld Kč (navýšení o 3%)
+- Sociální služby: 620 mld Kč (snížení o 2%)
+
+Hodnocení Patriot Index: Zákon hodnotíme pozitivně z pohledu posílení obranyschopnosti země. Zvýšení rozpočtu na obranu a bezpečnost je v souladu s ochranou národních zájmů. Škrty v sociální oblasti jsou kontroverzní, ale z pohledu fiskální odpovědnosti pochopitelné.
+
+=== LAW_ID: 2 ===
+NAME: Novela zákona o dani z příjmu
+DATE: 3.2.2025
+CATEGORY: Ekonomika
+SUMMARY: Novela mění sazby daně z příjmu fyzických osob a zavádí nový systém slevy na dani pro rodiny s dětmi.
+ANALYSIS:
+Novela zákona o dani z příjmu přináší významné změny v daňovém systému. Hlavní změnou je zavedení progresivnější daňové sazby a rozšíření slev na dani pro rodiny.
+
+Klíčové změny:
+- Základní sazba daně zůstává 15%
+- Nová sazba 23% pro příjmy nad 1,5 mil Kč ročně
+- Zvýšení slevy na dani na dítě o 20%
+- Zavedení nové slevy pro pečující osoby
+
+Hodnocení Patriot Index: Změny v daňovém systému hodnotíme neutrálně. Na jedné straně podpora rodin s dětmi posiluje demografickou politiku, na druhé straně vyšší daně mohou brzdit ekonomický růst.
+
+=== LAW_ID: 3 ===
+NAME: Zákon o kybernetické bezpečnosti
+DATE: 18.2.2025
+CATEGORY: Bezpečnost
+SUMMARY: Komplexní zákon o kybernetické bezpečnosti ČR, který stanovuje povinnosti provozovatelů kritické infrastruktury a zavádí národní centrum kybernetické bezpečnosti.
+ANALYSIS:
+Zákon o kybernetické bezpečnosti je jedním z nejdůležitějších bezpečnostních zákonů posledních let. Reaguje na rostoucí hrozby v kyberprostoru a posiluje obranyschopnost země v digitální oblasti.
+
+Hlavní ustanovení:
+- Zřízení Národního centra kybernetické bezpečnosti
+- Povinné bezpečnostní audity pro provozovatele kritické infrastruktury
+- Systém hlášení incidentů v reálném čase
+- Spolupráce s NATO Cooperative Cyber Defence Centre
+
+Hodnocení Patriot Index: Velmi pozitivní zákon z pohledu ochrany národních zájmů. Kybernetická bezpečnost je klíčová pro moderní obranu státu a tento zákon výrazně posiluje naše schopnosti v této oblasti.
+
+=== LAW_ID: 4 ===
+NAME: Důchodová reforma
+DATE: 28.2.2025
+CATEGORY: Sociální politika
+SUMMARY: Komplexní reforma důchodového systému, která navrhuje postupné zvyšování věku odchodu do důchodu a zavedení druhého pilíře.
+ANALYSIS:
+Důchodová reforma je jedním z nejkontroverznějších zákonů této vlády. Návrh reaguje na demografické změny a snaží se zajistit dlouhodobou udržitelnost důchodového systému.
+
+Klíčové body reformy:
+- Postupné zvýšení věku odchodu do důchodu na 67 let
+- Zavedení dobrovolného druhého pilíře
+- Zachování průběžného systému jako základu
+- Zvýšení minimálního důchodu o 15%
+
+Hodnocení Patriot Index: Reforma je z dlouhodobého pohledu nutná pro stabilitu země. Zvýšení důchodového věku je nepopulární, ale z fiskálních důvodů nevyhnutelné. Zavedení druhého pilíře hodnotíme kladně.
+
+=== LAW_ID: 5 ===
+NAME: Novela stavebního zákona
+DATE: 12.3.2025
+CATEGORY: Legislativa
+SUMMARY: Novela zjednodušuje stavební řízení a zavádí plně digitální podávání žádostí. Cílem je zkrátit dobu vyřízení stavebního povolení.
+ANALYSIS:
+Novela stavebního zákona je technická norma, která si klade za cíl zrychlit a zjednodušit stavební řízení v České republice.
+
+Hlavní změny:
+- Plná digitalizace stavebního řízení
+- Zkrácení lhůt pro vyřízení o 30%
+- Zjednodušení procesu pro rodinné domy
+- Centrální stavební úřad jako odvolací instance
+
+Hodnocení Patriot Index: Neutrální zákon z pohledu patriotismu. Zjednodušení stavebního řízení může podpořit ekonomický rozvoj regionů.
+
+=== LAW_ID: 6 ===
+NAME: Zákon o zahraniční službě
+DATE: 25.3.2025
+CATEGORY: Zahraniční politika
+SUMMARY: Nový zákon o zahraniční službě modernizuje diplomatický sbor a posiluje zastoupení ČR v mezinárodních organizacích.
+ANALYSIS:
+Zákon o zahraniční službě přináší modernizaci českého diplomatického aparátu a reaguje na měnící se geopolitické prostředí.
+
+Klíčové změny:
+- Modernizace diplomatického sboru
+- Posílení ekonomické diplomacie
+- Zvýšení rozpočtu na zastupitelské úřady o 20%
+- Nová strategie pro region Indo-Pacifiku
+
+Hodnocení Patriot Index: Pozitivní zákon, který posiluje pozici České republiky ve světě. Investice do diplomacie jsou investicí do bezpečnosti a prosperity země.
+
+=== LAW_ID: 7 ===
+NAME: Energetický zákon
+DATE: 8.4.2025
+CATEGORY: Energetika
+SUMMARY: Nový energetický zákon stanovuje strategii energetické bezpečnosti ČR včetně rozvoje jaderných elektráren a obnovitelných zdrojů.
+ANALYSIS:
+Energetický zákon je strategický dokument, který určuje směřování české energetiky na další desetiletí. V kontextu energetické krize je jeho význam obzvláště důležitý.
+
+Hlavní body:
+- Dostavba Dukovan - nový blok do roku 2036
+- Rozvoj obnovitelných zdrojů - cíl 30% do roku 2030
+- Snížení závislosti na fosilních palivech o 40%
+- Investice do vodíkové infrastruktury
+
+Hodnocení Patriot Index: Velmi pozitivní zákon. Energetická soběstačnost je základem národní bezpečnosti. Dostavba jaderných elektráren a diverzifikace zdrojů jsou klíčové pro nezávislost ČR.
+
+=== LAW_ID: 8 ===
+NAME: Zákon o ochraně hranic
+DATE: 22.4.2025
+CATEGORY: Bezpečnost
+SUMMARY: Zákon posiluje ochranu státních hranic a zavádí nová opatření proti nelegální migraci.
+ANALYSIS:
+Zákon o ochraně hranic reaguje na migrační tlaky a posiluje schopnost ČR chránit své vnější hranice v rámci Schengenského prostoru.
+
+Klíčová opatření:
+- Posílení Policie ČR na hranicích o 2000 příslušníků
+- Modernizace hraniční infrastruktury
+- Zavedení biometrických kontrol
+- Prohloubení spolupráce s Frontex
+
+Hodnocení Patriot Index: Pozitivní zákon z pohledu národní bezpečnosti. Ochrana hranic je základní povinností státu a posílení v této oblasti hodnotíme kladně.
+
+=== LAW_ID: 9 ===
+NAME: Novela branného zákona
+DATE: 5.5.2025
+CATEGORY: Obrana
+SUMMARY: Novela rozšiřuje možnosti aktivních záloh a zavádí novou formu krátké vojenské služby pro dobrovolníky.
+ANALYSIS:
+Novela branného zákona reaguje na změněnou bezpečnostní situaci v Evropě a posiluje obranyschopnost České republiky.
+
+Klíčové změny:
+- Zavedení 3měsíční dobrovolné vojenské služby
+- Rozšíření aktivních záloh na 15 000 osob
+- Zvýšení odměny pro zálohy o 50%
+- Modernizace výcvikového programu
+
+Hodnocení Patriot Index: Velmi pozitivní zákon. Posílení obranyschopnosti je jedním z nejvyšších patriotických cílů. Dobrovolná vojenská služba umožňuje občanům aktivně se podílet na obraně vlasti.
+
+=== LAW_ID: 10 ===
+NAME: Zákon o veřejných zakázkách
+DATE: 19.5.2025
+CATEGORY: Ekonomika
+SUMMARY: Novela zpřísňuje pravidla pro veřejné zakázky a zavádí povinnou transparentnost celého procesu.
+ANALYSIS:
+Zákon o veřejných zakázkách se snaží omezit korupci a zvýšit efektivitu nakládání s veřejnými prostředky.
+
+Hlavní změny:
+- Povinné zveřejňování všech nabídek
+- Elektronické aukce pro zakázky nad 2 mil Kč
+- Protikorupční klauzule ve všech smlouvách
+- Centrální registr dodavatelů
+
+Hodnocení Patriot Index: Pozitivní zákon. Transparentní nakládání s veřejnými prostředky je v zájmu všech občanů. Boj proti korupci posiluje důvěru ve stát.
+
+=== LAW_ID: 11 ===
+NAME: Zákon o sociálních službách
+DATE: 2.6.2025
+CATEGORY: Sociální politika
+SUMMARY: Reforma systému sociálních služeb se zaměřením na decentralizaci a posílení role obcí.
+ANALYSIS:
+Zákon o sociálních službách přináší decentralizaci a posiluje roli obcí v poskytování sociálních služeb.
+
+Klíčové změny:
+- Přesun kompetencí na úroveň obcí
+- Zvýšení dotací pro komunální sociální služby o 25%
+- Standardizace kvality sociálních služeb
+- Zavedení sociálních karet pro efektivnější distribuci
+
+Hodnocení Patriot Index: Neutrální zákon z pohledu patriotismu. Decentralizace sociálních služeb může zlepšit jejich dostupnost v regionech.
+
+=== LAW_ID: 12 ===
+NAME: Novela trestního zákoníku
+DATE: 16.6.2025
+CATEGORY: Bezpečnost
+SUMMARY: Novela zpřísňuje tresty za teroristické činy a zavádí novou skutkovou podstatu kybernetické sabotáže.
+ANALYSIS:
+Novela trestního zákoníku reaguje na nové typy hrozeb a posiluje trestněprávní nástroje proti terorismu a kybernetickým útokům.
+
+Hlavní změny:
+- Zpřísnění trestů za teroristické činy (minimum 15 let)
+- Nová skutková podstata: kybernetická sabotáž
+- Rozšíření definice extremismu
+- Zpřísnění trestů za špionáž
+
+Hodnocení Patriot Index: Pozitivní zákon. Ochrana státu před terorismem a špionáží je základem bezpečnosti. Nové trestněprávní nástroje jsou potřebné pro moderní hrozby.
+
+=== LAW_ID: 13 ===
+NAME: Zákon o digitalizaci státu
+DATE: 1.7.2025
+CATEGORY: Legislativa
+SUMMARY: Komplexní zákon o digitalizaci státní správy, který zavádí právo občanů na digitální komunikaci s úřadem.
+ANALYSIS:
+Zákon o digitalizaci státu je ambiciózní projekt modernizace veřejné správy. Cílem je, aby do roku 2028 byla většina úředních úkonů dostupná online.
+
+Klíčové body:
+- Právo na digitální komunikaci s úřadem
+- Jednotný portál občana
+- Digitální identita pro všechny občany
+- Propojení všech státních registrů
+
+Hodnocení Patriot Index: Pozitivní zákon. Modernizace státu zvyšuje jeho efektivitu a konkurenceschopnost. Digitalizace je investicí do budoucnosti.
+
+=== LAW_ID: 14 ===
+NAME: Zákon o národní bezpečnosti
+DATE: 15.7.2025
+CATEGORY: Bezpečnost
+SUMMARY: Nový rámcový zákon o národní bezpečnosti, který sjednocuje bezpečnostní legislativu a zřizuje Radu pro národní bezpečnost.
+ANALYSIS:
+Zákon o národní bezpečnosti je jedním z nejdůležitějších bezpečnostních předpisů. Vytváří jednotný rámec pro všechny aspekty národní bezpečnosti.
+
+Hlavní ustanovení:
+- Zřízení Rady pro národní bezpečnost
+- Jednotná bezpečnostní strategie
+- Koordinace zpravodajských služeb
+- Ochrana kritické infrastruktury
+
+Hodnocení Patriot Index: Velmi pozitivní zákon. Komplexní přístup k národní bezpečnosti je základem ochrany státu a jeho občanů. Zřízení Rady pro národní bezpečnost zvýší koordinaci bezpečnostních složek.
+
+=== LAW_ID: 15 ===
+NAME: Zákon o ochraně soukromí
+DATE: 29.7.2025
+CATEGORY: Legislativa
+SUMMARY: Zákon posiluje ochranu soukromí občanů v digitální době a zavádí přísnější regulaci sběru osobních údajů.
+ANALYSIS:
+Zákon o ochraně soukromí reaguje na rostoucí obavy z masového sběru dat a posiluje práva občanů na ochranu jejich osobních údajů.
+
+Klíčové body:
+- Právo na digitální zapomenutí
+- Přísnější sankce za únik osobních údajů
+- Povinný souhlas pro zpracování biometrických dat
+- Nezávislý úřad pro ochranu digitálních práv
+
+Hodnocení Patriot Index: Pozitivní zákon. Ochrana soukromí občanů je základní hodnotou demokratické společnosti. Rovnováha mezi bezpečností a soukromím je důležitá.
+
+================================================================================
+ŠABLONA PRO NOVÝ ZÁKON:
+
+=== LAW_ID: XX ===
+NAME: [Název zákona]
+DATE: [DD.MM.YYYY]
+CATEGORY: [Kategorie: Ekonomika / Bezpečnost / Obrana / Energetika / Sociální politika / Zahraniční politika / Legislativa]
+SUMMARY: [Krátký souhrn zákona - 1-2 věty]
+ANALYSIS:
+[Podrobná analýza zákona. Můžete použít více odstavců.
+
+Hlavní body:
+- Bod 1
+- Bod 2
+
+Hodnocení Patriot Index: Vaše hodnocení.]
+================================================================================

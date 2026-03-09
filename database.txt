@@ -1,0 +1,403 @@
+================================================================================
+PATRIOT INDEX - DATABASE INTEGRATION GUIDE
+================================================================================
+
+This document explains how to connect a real database to the Patriot Index
+website so that all data-driven elements update automatically.
+
+================================================================================
+1. CURRENT ARCHITECTURE
+================================================================================
+
+Currently, the website uses GENERATED data from:
+  /lib/parliament-data.ts  ->  generatePoliticians() function
+
+This function creates fake politicians with random scores and vote histories.
+All components that display data call this function:
+  - Parliament schematic (parliament-chamber.tsx) -> seat positions + colors
+  - Live View box (about-section.tsx) -> trending politicians (3-vote average)
+  - Politician profile (politician-profile.tsx) -> score, chart, vote history
+  - Party profile (party-profile.tsx) -> avg score, members list, chart
+  - Compare view (compare-view.tsx) -> side-by-side score/chart comparison
+  - Tooltip hover boxes in the schematic
+  - Laws page (laws-page.tsx) -> reads from /public/data/law-analyses.txt
+
+The law analyses are stored in a structured text file at:
+  /public/data/law-analyses.txt
+
+================================================================================
+2. DATABASE SCHEMA (what needs to be set up)
+================================================================================
+
+You need 5 main tables:
+
+TABLE: parties
+  - id            INTEGER PRIMARY KEY
+  - name          TEXT NOT NULL (e.g. "ANO")
+  - short_name    TEXT NOT NULL (e.g. "ANO")
+  - color         TEXT NOT NULL (hex color, e.g. "#1e1250")
+  - seats         INTEGER NOT NULL
+  - founded       INTEGER
+
+  NOTE: Parties no longer have "leader" or "description" fields.
+
+TABLE: politicians
+  - id            INTEGER PRIMARY KEY
+  - name          TEXT NOT NULL
+  - party_id      INTEGER REFERENCES parties(id)
+  - birth_date    TEXT
+  - gender        TEXT NOT NULL ("male" or "female")
+                  Used for grammatically correct Czech labels:
+                  "Narozen" (male) vs "Narozena" (female)
+                  Also used for the "Pohlavi" gender filter.
+  - image_url     TEXT
+  - committee     TEXT
+  - region        TEXT (the election region, e.g. "Praha", "Jihomoravsky kraj")
+                  Used for the "Kraje" region filter in the parliament view.
+
+  NOTE: Politicians no longer have "servingSince" field.
+
+  Valid regions (14 kraje):
+    Praha, Stredocesky kraj, Jihocesky kraj, Plzensky kraj,
+    Karlovarsky kraj, Ustecky kraj, Liberecky kraj, Kralovehradecky kraj,
+    Pardubicky kraj, Kraj Vysocina, Jihomoravsky kraj, Olomoucky kraj,
+    Zlinsky kraj, Moravskoslezsky kraj
+
+TABLE: votes
+  - id            INTEGER PRIMARY KEY
+  - politician_id INTEGER REFERENCES politicians(id)
+  - law_id        INTEGER REFERENCES laws(id)
+  - voted         TEXT NOT NULL ("pro", "proti", "zdrzel", "nehlasoval")
+
+  NOTE: The votes table is intentionally simple. The date and law name
+  are retrieved via law_id from the laws table. Score changes are
+  computed externally and stored in the scores table, not here.
+
+TABLE: scores
+  - id            INTEGER PRIMARY KEY
+  - politician_id INTEGER REFERENCES politicians(id)
+  - law_id        INTEGER REFERENCES laws(id)
+  - score_before  INTEGER NOT NULL (score before this vote)
+  - score_after   INTEGER NOT NULL (score after this vote)
+  - score_change  INTEGER NOT NULL (= score_after - score_before, stored for convenience)
+  - timestamp     TEXT NOT NULL (format: "DD.MM.YYYY HH:MM")
+                  When the score was computed/recorded
+
+  NOTE: Score computation is done EXTERNALLY and results are written here.
+  The website only reads and displays this data, it does not calculate scores.
+  The "current score" of a politician is the latest score_after from this table.
+  The score history (for charts) is the series of score_after values over time.
+  The score_change between the last two votes is used for the "+/- change" display
+  and can be derived as (latest score_after - previous score_after).
+
+TABLE: laws
+  - id            INTEGER PRIMARY KEY
+  - name          TEXT NOT NULL (e.g. "Zakon o statnim rozpoctu 2025")
+  - date          TEXT NOT NULL (format: "DD.MM.YYYY")
+  - category      TEXT (e.g. "Bezpecnost", "Ekonomika", "Dane")
+  - status        TEXT (e.g. "Schvalen", "V jednani", "Zamitnout")
+  - summary       TEXT (1-2 sentence summary)
+  - impact_level  TEXT ("Vysoka", "Stredni", "Nizka")
+  - analysis      TEXT (full multi-paragraph analysis text)
+
+================================================================================
+3. HOW TO INTEGRATE
+================================================================================
+
+OPTION A: Google Sheets API (Recommended for small teams)
+----------------------------------------------------------
+This is the easiest way for a non-technical person to manage data.
+
+1. Create a Google Sheet with these tabs:
+   - "parties" (columns: id, name, short_name, color, seats, founded)  [NO leader/description]
+   - "politicians" (columns: id, name, party, birth_date, image_url, gender, region, committee)  [NO servingSince]
+   - "votes" (columns: id, politician_id, law_id, voted)
+   - "scores" (columns: id, politician_id, law_id, score_before, score_after, score_change, timestamp)
+   - "laws" (columns: id, name, date, category, status, summary, impact_level, analysis)
+
+2. Publish the sheet to the web (File > Share > Publish to web)
+   Choose "Comma-separated values (.csv)" for each tab
+
+3. Get the published CSV URL for each tab. Format:
+   https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={TAB_NAME}
+
+4. Set environment variable:
+   GOOGLE_SHEET_ID=your_sheet_id_here
+
+5. Create an API route that fetches from Google Sheets:
+
+   // /app/api/data/route.ts
+   export async function GET() {
+     const sheetId = process.env.GOOGLE_SHEET_ID;
+     const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=`;
+     
+     const [politiciansCSV, votesCSV, partiesCSV, lawsCSV] = await Promise.all([
+       fetch(`${baseUrl}politicians`).then(r => r.text()),
+       fetch(`${baseUrl}votes`).then(r => r.text()),
+       fetch(`${baseUrl}parties`).then(r => r.text()),
+       fetch(`${baseUrl}laws`).then(r => r.text()),
+     ]);
+     
+     // Parse CSV and return JSON
+     return Response.json({ politicians: parseCSV(politiciansCSV), ... });
+   }
+
+6. In the frontend, replace generatePoliticians() with a SWR fetch:
+   import useSWR from 'swr';
+   const { data } = useSWR('/api/data', fetcher);
+
+
+OPTION B: REST API
+-------------------
+Your backend developer sets up a simple API that returns JSON.
+
+1. Deploy a backend (Node.js, Python Flask, etc.) with these endpoints:
+
+   GET /api/parties
+   Returns: [{ id, name, short_name, color, seats, founded }]
+
+   GET /api/politicians
+   Returns: [{ id, name, party, birth_date, image_url, gender, committee, region }]
+
+   GET /api/votes
+   Returns: [{ id, politician_id, law_id, voted }]
+
+   GET /api/scores
+   Returns: [{ id, politician_id, law_id, score_before, score_after, score_change, timestamp }]
+
+   GET /api/laws
+   Returns: [{ id, name, date, category, status, summary, impact_level, analysis }]
+
+   GET /api/politicians/:id
+   Returns: Full politician with embedded vote/score history
+
+2. In the website, create a new file: /lib/api-loader.ts
+
+   export async function fetchPoliticians(): Promise<Politician[]> {
+     const [polRes, voteRes] = await Promise.all([
+       fetch('YOUR_API_URL/api/politicians'),
+       fetch('YOUR_API_URL/api/votes'),
+     ]);
+     const pols = await polRes.json();
+     const votes = await voteRes.json();
+     // ... map and compute scores
+   }
+
+   export async function fetchLaws(): Promise<LawAnalysis[]> {
+     const res = await fetch('YOUR_API_URL/api/laws');
+     return res.json();
+   }
+
+3. Replace generatePoliticians() calls with fetchPoliticians() calls in:
+   - /components/parliament-chamber.tsx
+   - /components/about-section.tsx
+
+4. Replace the /public/data/law-analyses.txt fetch in laws-page.tsx
+   with fetchLaws()
+
+   Use SWR for client-side data fetching:
+   import useSWR from 'swr';
+   const { data: politicians } = useSWR('/api/politicians', fetcher, {
+     revalidateOnFocus: false,
+     dedupingInterval: 300000,
+   });
+
+
+OPTION C: Direct Database Connection (Supabase/Neon/PostgreSQL)
+---------------------------------------------------------------
+If using Supabase, Neon, or another hosted PostgreSQL:
+
+1. Add the database connection string as an environment variable:
+   DATABASE_URL=postgresql://user:pass@host:port/dbname
+
+2. Use server-side API routes in Next.js:
+   /app/api/politicians/route.ts
+   /app/api/parties/route.ts
+   /app/api/laws/route.ts
+
+3. Example with Neon (@neondatabase/serverless):
+
+   import { neon } from '@neondatabase/serverless';
+   
+   export async function GET() {
+     const sql = neon(process.env.DATABASE_URL!);
+     const politicians = await sql`SELECT * FROM politicians ORDER BY id`;
+     const votes = await sql`SELECT * FROM votes ORDER BY id`;
+     // compute scores and return
+   }
+
+4. Example with Supabase:
+
+   import { createClient } from '@supabase/supabase-js';
+   
+   const supabase = createClient(
+     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+     process.env.SUPABASE_SERVICE_ROLE_KEY!
+   );
+   
+   export async function GET() {
+     const { data: politicians } = await supabase.from('politicians').select('*');
+     const { data: votes } = await supabase.from('votes').select('*');
+     const { data: laws } = await supabase.from('laws').select('*');
+     // compute scores and return
+   }
+
+
+OPTION D: CSV Files (Simplest, for early development)
+-----------------------------------------------------
+The website already supports CSV loading. Place files in /public/data/:
+
+   /public/data/politicians.csv
+   /public/data/votes.csv
+   /public/data/scores.csv
+   /public/data/parties.csv
+
+Format for politicians.csv:
+   id,name,party,birth_date,image_url,gender,region,committee
+   1,Jan Novak,ANO,15.3.1975,https://...,male,Praha,Rozpoctovy vybor
+
+Format for votes.csv:
+   id,politician_id,law_id,voted
+   1,1,1,pro
+
+Format for scores.csv:
+   id,politician_id,law_id,score_before,score_after,score_change,timestamp
+   1,1,1,1000,1025,25,15.1.2025 14:30
+
+Format for parties.csv:
+   name,short_name,color,seats,founded
+   ANO,ANO,#1e1250,80,2011
+
+NOTE: No leader or description columns.
+
+The loadFromCSV() function in /lib/parliament-data.ts already parses these.
+
+For law analyses, either keep /public/data/law-analyses.txt or add a laws.csv:
+   id,name,date,category,status,summary,impact_level,analysis
+   1,Zakon o statnim rozpoctu 2025,15.1.2025,Ekonomika,Schvalen,"Souhrn...",Vysoka,"Analyza..."
+
+================================================================================
+4. LAW ANALYSES - HOW TO UPDATE
+================================================================================
+
+Law analyses are currently stored in:
+  /public/data/law-analyses.txt
+
+This is a structured text file with a simple format:
+  === LAW_ID: 1 ===
+  NAME: Zakon o statnim rozpoctu 2025
+  DATE: 15.1.2025
+  CATEGORY: Ekonomika
+  STATUS: Schvalen
+  SUMMARY: Short summary text
+  PATRIOT_SCORE_IMPACT: Vysoka
+  ANALYSIS:
+  Multi-paragraph analysis text here...
+
+To add a new law:
+  1. Open /public/data/law-analyses.txt
+  2. Copy the template at the bottom of the file
+  3. Fill in all fields
+  4. Save and deploy
+
+To switch to a database:
+  1. Create the "laws" table with the schema above
+  2. Update /components/laws-page.tsx to fetch from API instead of the txt file
+  3. The parseLawAnalyses() function in laws-page.tsx shows the current parsing logic
+
+================================================================================
+5. CACHING STRATEGY (IMPORTANT - saves money)
+================================================================================
+
+Data should NOT be fetched on every page load. Use these strategies:
+
+A) SWR with long dedup interval (client-side):
+   useSWR('/api/data', fetcher, {
+     dedupingInterval: 600000, // 10 minutes
+     revalidateOnFocus: false,
+     revalidateOnReconnect: false,
+   });
+
+B) Next.js "use cache" (server-side):
+   'use cache'
+   // This caches the result and revalidates periodically
+
+C) Manual cache in memory (for API routes):
+   let cache = { data: null, timestamp: 0 };
+   const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+   export async function GET() {
+     if (cache.data && Date.now() - cache.timestamp < CACHE_DURATION) {
+       return Response.json(cache.data);
+     }
+     const fresh = await fetchFromDB();
+     cache = { data: fresh, timestamp: Date.now() };
+     return Response.json(fresh);
+   }
+
+D) Webhook-based invalidation (best):
+   Your backend sends a webhook after inserting new vote data.
+   The webhook calls: revalidateTag('politicians') or revalidatePath('/').
+
+================================================================================
+6. WHICH COMPONENTS NEED CHANGES
+================================================================================
+
+When you swap from generated data to real data, these files need updating:
+
+FILE: /components/parliament-chamber.tsx
+  WHAT: Replace `const politicians = useMemo(() => generatePoliticians(), [])`
+  WITH: SWR fetch or props from a server component
+
+FILE: /components/about-section.tsx
+  WHAT: Replace `generatePoliticians()` call inside allTrending useMemo
+  WITH: Accept politicians as a prop or fetch with SWR
+
+FILE: /components/laws-page.tsx
+  WHAT: Replace the fetch("/data/law-analyses.txt") call
+  WITH: SWR fetch from API, or accept laws as props
+
+FILE: /lib/parliament-data.ts
+  WHAT: Keep the type definitions (Politician, Party, VoteRecord, etc.)
+  DONE: Party type no longer has leader or description fields
+  DONE: Politician type no longer has servingSince field
+  ADD: ScoreRecord type with score_before, score_after, score_change, timestamp
+  REMOVE: generatePoliticians() (keep generateSeatPositions as-is)
+  ADD: Export a fetchPoliticians() function that calls your API
+  DONE: Added getAge() helper for age-based filtering
+
+================================================================================
+7. STEP-BY-STEP MIGRATION PLAN
+================================================================================
+
+1. Set up the database with the schema above (4 tables)
+2. Create a simple API (4 endpoints: parties, politicians, votes, laws)
+   OR publish a Google Sheet with 4 tabs and use the Sheets API
+3. Add API_URL or GOOGLE_SHEET_ID to Vercel environment variables
+4. Create /lib/api-loader.ts with the fetch + cache logic
+5. Replace generatePoliticians() in parliament-chamber.tsx & about-section.tsx
+6. Replace txt file fetch in laws-page.tsx with API fetch
+7. Test with real data
+8. Set up webhook-based cache invalidation for real-time updates
+
+================================================================================
+8. ENVIRONMENT VARIABLES NEEDED
+================================================================================
+
+For REST API approach:
+  PATRIOT_API_URL=https://your-api.com
+
+For Google Sheets approach:
+  GOOGLE_SHEET_ID=your_sheet_id_here
+
+For direct database:
+  DATABASE_URL=postgresql://...
+
+For Supabase:
+  NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY=your_key
+
+For CSV approach:
+  No env vars needed, just place files in /public/data/
+
+================================================================================

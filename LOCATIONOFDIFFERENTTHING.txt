@@ -1,0 +1,254 @@
+PATRIOT INDEX - WHERE TO FIND THINGS
+======================================
+
+This file tells you exactly where specific features and swappable elements
+are located in the codebase, so you can quickly find and modify them.
+
+
+ANIMATED TITLE / PATRIOT INDEX LOGO
+-------------------------------------
+File: components/hero.tsx
+Location: Lines inside the div with comment "ANIMATED TITLE AREA"
+
+The hero section has a clearly marked placeholder area where the static
+"PATRIOT INDEX" title text lives. To replace it with an animation:
+  1. Open components/hero.tsx
+  2. Find the div with the large <h1> element
+  3. Comment out or delete the <h1> element inside it
+  4. Add your own animated element:
+     - Animated GIF: <img src="/images/patriot-index-animated.gif" ... />
+     - Lottie: Use a Lottie player component
+     - Video: <video autoPlay muted loop playsInline src="..." />
+  5. Place your animation file in /public/images/
+
+
+PARTY DEFINITIONS (names, colors, seat counts, order)
+------------------------------------------------------
+File: lib/parliament-data.ts
+Location: The PARTIES array (search for "export const PARTIES")
+
+The order of parties in this array determines:
+  - The order of wedges in the parliament semicircle (left to right)
+  - The order of party filter buttons at the top
+Current order: SPD, Motoriste, ANO, ODS, KDU-CSL, TOP09, STAN, Pirati
+To change wedge positions, simply reorder the objects in the array.
+
+Party colors are also defined in parliament-chamber.tsx in the PARTY_COLORS
+object near the top of the file. Update both if changing colors.
+
+
+POLITICIAN DATA (names, scores, photos, vote history)
+------------------------------------------------------
+File: lib/parliament-data.ts
+Location: The generatePoliticians() function
+
+Currently generates mock data. To use real data:
+  - OPTION 1: Place CSV files in /public/data/ (see database.txt)
+  - OPTION 2: Use Google Sheets (see database.txt section 3A)
+  - OPTION 3: Use psp.cz data (see lib/psp-data-loader.ts)
+  - OPTION 4: Connect to a database (see database.txt section 3C)
+
+
+PARLIAMENT SEAT LAYOUT (semicircle geometry)
+---------------------------------------------
+File: lib/parliament-data.ts
+Location: The generateSeatPositions() function
+
+Controls the semicircle layout: number of rows, radius, angle spread.
+Key parameters:
+  - rows = 10 (number of concentric rows)
+  - centerX = 50, centerY = 95 (center point of the semicircle)
+  - minRadius = 15, maxRadius = 90
+  - angle range: 0.04*PI to 0.96*PI
+  - Seats are distributed proportionally by arc length per row
+
+Seat visual size is controlled in parliament-chamber.tsx:
+  - seatRadius = 2.9 (circle radius in SVG units)
+  - Initials font size = 2.15 (hardcoded, independent of radius)
+  - SVG viewBox = "-2 -2 104 100"
+
+
+SEARCH BAR
+-----------
+File: components/parliament-chamber.tsx
+Location: The PoliticianSearch component (internal to the file)
+
+Features:
+  - Always visible (including during compare mode)
+  - Searches by politician name
+  - Results sorted: names/surnames starting with query appear first
+  - Grid layout for aligned columns (name, party, score)
+  - Hovering a search result highlights the seat in RED on the schematic
+  - Tooltip follows the hovered seat position (not the mouse)
+
+
+REGION FILTER ("Kraje")
+-------------------------
+File: components/parliament-chamber.tsx
+Location: The "Kraje" button in the party filter bar, and the region
+         filter bar that appears below it.
+
+The REGIONS array is defined at the top of the component (14 Czech regions).
+The same region list exists in lib/parliament-data.ts for data generation.
+State: selectedRegion (string | null), showRegions (boolean).
+The isSeatFaded() callback checks both selectedParty AND selectedRegion.
+
+
+COMPARE MODE
+--------------
+File: components/parliament-chamber.tsx (controls)
+File: components/compare-view.tsx (display)
+
+Activated via the "Porovnat" button in politician/party profiles.
+State: compareMode, compareLeft, compareRight.
+The search bar stays visible during compare mode for selecting politicians.
+
+
+SCORE CHARTS (time series graphs)
+-----------------------------------
+Files: components/party-profile.tsx AND components/politician-profile.tsx
+Location: The <AreaChart> component from Recharts
+
+Both use paginated views (VISIBLE_LAWS = 7 items shown at a time).
+Navigation arrows at the bottom let you scroll through law history.
+isAnimationActive is set to false so data points persist when navigating.
+To change how many laws are visible at once, change the VISIBLE_LAWS constant.
+
+
+HOVER TOOLTIP (politician info on seat hover)
+-----------------------------------------------
+File: components/parliament-chamber.tsx
+Location: The tooltip div near the bottom, controlled by hoveredSeat state.
+
+Position: Follows mouse via handleMouseMove, or computes from seat SVG
+position when hovering from search results (uses svgRef).
+Auto-clears on scroll (useEffect with "scroll" listener on window).
+Shows: avatar, name, party, score, last vote change.
+
+
+LAWS PAGE (Zakony)
+--------------------
+File: components/laws-page.tsx
+
+Accessed via "Zakony" button in the parliament chamber header.
+Navigation: parliament <-> laws (via "Zakony" / "Snemovna" buttons).
+
+Features:
+  - Category filter bar at the top
+  - Column headers: #, Name, Category, Date, Impact, Status
+  - Each law row is clickable, expands into a dropdown analysis
+  - Analysis includes: summary, metadata, full analysis text
+  - Data source: /public/data/law-analyses.txt
+
+To add new laws:
+  1. Open /public/data/law-analyses.txt
+  2. Copy the template at the bottom
+  3. Fill in: LAW_ID, NAME, DATE, CATEGORY, STATUS, SUMMARY,
+     PATRIOT_SCORE_IMPACT, ANALYSIS
+  4. Save and deploy
+
+To switch to database, update the fetch() call in the useEffect
+in laws-page.tsx to call your API endpoint instead.
+
+
+SCORE CHANGE BOXES ("Zmena od posledniho hlasovani")
+------------------------------------------------------
+Files: components/party-profile.tsx AND components/politician-profile.tsx
+Location: Search for "Zmena od posledniho hlasovani"
+
+Both profiles show a box with an up/down arrow and the score change value.
+Uses green (#22c55e) for positive, red (#ef4444) for negative.
+
+
+MEMBER LIST (expandable "all members" button)
+-----------------------------------------------
+File: components/party-profile.tsx
+Location: The "Members list" section, button says "Zobrazit vsech X"
+
+Click toggles between top 10 and all members. When expanded with >15
+members, switches to a multi-column grid layout.
+
+
+TWITTER/X FEED CONFIGURATION
+-------------------------------
+File: components/twitter-feed.tsx
+Location: The PARTY_TWITTER_CONFIG object at the top
+
+Maps each party shortName to a hashtag and optional Twitter username.
+
+
+COLOR SCHEME / DESIGN TOKENS
+------------------------------
+File: app/globals.css
+Location: The :root, .dark, and .light CSS blocks
+
+All colors are defined as HSL design tokens. The site defaults to dark mode.
+Primary accent color: red (hsl 0 72% 50%).
+
+Parliament chamber background colors:
+  Dark mode: hsl(220 18% 7%) - very dark, matches site scheme
+  Light mode: hsl(220 14% 90%) - light gray
+  Both have subtle noise texture overlay
+
+
+THEME TOGGLE (dark/light switch)
+----------------------------------
+File: components/theme-toggle.tsx
+Shows a sun/moon icon button. Uses next-themes under the hood.
+
+
+FONTS
+------
+File: app/layout.tsx
+Fonts: Space Grotesk (headings/body) and JetBrains Mono (monospace/code).
+Applied via CSS variables --font-space-grotesk and --font-jetbrains.
+
+
+SOCIAL MEDIA LINKS
+--------------------
+File: components/navbar.tsx (landing page)
+File: components/parliament-chamber.tsx (parliament page, SocialLinks component)
+
+Currently links to facebook.com, instagram.com, twitter.com.
+Replace the href values with your actual social media URLs.
+
+
+TRENDING POLITICIANS ("Nejvice se meni" box on landing page)
+-------------------------------------------------------------
+File: components/about-section.tsx
+Location: The trendingPoliticians useMemo block
+
+Shows the 4 politicians with the biggest absolute score change from
+their last vote. Appears on the landing page as a "live feed" style card.
+
+
+FAQ SECTION
+------------
+File: components/parliament-chamber.tsx
+Location: The faqRef div near the bottom of the component
+
+Contains question/answer cards. Edit the array of {q, a} objects to
+change FAQ content. The FAQ button in the instruction bar scrolls to it.
+
+
+PAGE TRANSITIONS
+-----------------
+File: components/page-router.tsx
+Animations defined in: app/globals.css (pageTurnOut, pageTurnIn keyframes)
+
+The page-turn effect when switching between views.
+Now supports 3 pages: landing, parliament, laws.
+
+
+SEAT VISUAL EFFECTS
+---------------------
+File: components/parliament-chamber.tsx
+Location: Inside the SVG rendering loop
+
+Each seat has:
+  - Outer glow ring (stroke-foreground/10, light mode "sharpen" effect)
+  - Main colored circle (party color fill)
+  - Inner lighter edge ring (rgba(255,255,255,0.12))
+  - Bold white initials (fontWeight 900, text shadow for contrast)
+  - Red highlight ring when selected/hovered/compared (#ef4444)
+  - Fade effect when filtered out by party or region

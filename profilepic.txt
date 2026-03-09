@@ -1,0 +1,186 @@
+================================================================================
+PATRIOT INDEX - PROFILE PICTURE UPLOAD GUIDE
+================================================================================
+
+This document explains how to add and manage profile pictures for politicians
+on the Patriot Index website.
+
+================================================================================
+1. CURRENT STATE
+================================================================================
+
+Currently, politician profile pictures are auto-generated using DiceBear API:
+  https://api.dicebear.com/9.x/notionists/svg?seed=pol{ID}&backgroundColor=b6e3f4
+
+Each politician gets a unique cartoon avatar based on their ID. This is a
+placeholder system - you will want to replace these with real photos.
+
+================================================================================
+2. OPTION A: Static Files in /public (Simplest)
+================================================================================
+
+Step 1: Create a folder for politician photos:
+  /public/images/politicians/
+
+Step 2: Name each file by politician ID:
+  /public/images/politicians/1.jpg
+  /public/images/politicians/2.jpg
+  /public/images/politicians/3.jpg
+  ...etc.
+
+  Recommended format: JPEG or WebP
+  Recommended size: 200x200 pixels (square, will be displayed in circles)
+  Max file size: Keep under 100KB per image for performance
+
+Step 3: Update the image URL in your data source:
+
+  If using CSV (/public/data/politicians.csv):
+    Change the image_url column to: /images/politicians/{id}.jpg
+
+  If using database:
+    UPDATE politicians SET image_url = '/images/politicians/' || id || '.jpg';
+
+  If using generated data (current):
+    In /lib/parliament-data.ts, change the imageUrl line from:
+      imageUrl: `https://api.dicebear.com/9.x/notionists/svg?seed=pol${id}&backgroundColor=b6e3f4`
+    To:
+      imageUrl: `/images/politicians/${id}.jpg`
+
+Step 4: Deploy
+  The images will be served as static files by Next.js automatically.
+
+================================================================================
+3. OPTION B: External Image Hosting (Vercel Blob / Cloudinary / S3)
+================================================================================
+
+For better scalability, host images externally:
+
+A) Vercel Blob Storage:
+   1. Enable Vercel Blob in your project settings
+   2. Upload images using the Vercel Blob API:
+      import { put } from '@vercel/blob';
+      const blob = await put(`politicians/${id}.jpg`, file, { access: 'public' });
+   3. Store the returned URL in the database image_url column
+   4. Add the Blob domain to next.config.mjs:
+      images: { remotePatterns: [{ hostname: '*.public.blob.vercel-storage.com' }] }
+
+B) Cloudinary:
+   1. Create a Cloudinary account
+   2. Upload images to a "politicians" folder
+   3. Use the Cloudinary URL as the image_url
+   4. Benefit: Cloudinary auto-resizes and optimizes images
+
+C) AWS S3:
+   1. Create an S3 bucket with public read access
+   2. Upload images with key: politicians/{id}.jpg
+   3. Use the S3 URL as the image_url
+
+================================================================================
+4. OPTION C: Admin Upload Interface (Future)
+================================================================================
+
+When you build an admin panel, you can add a file upload form:
+
+  1. Create an API route: /app/api/upload-photo/route.ts
+  2. Accept multipart/form-data with the image file
+  3. Resize to 200x200 using sharp (already available in the project)
+  4. Save to Vercel Blob or your preferred storage
+  5. Update the politician's image_url in the database
+
+  Example API route:
+    import { put } from '@vercel/blob';
+    import sharp from 'sharp';
+
+    export async function POST(request: Request) {
+      const formData = await request.formData();
+      const file = formData.get('photo') as File;
+      const politicianId = formData.get('id') as string;
+
+      // Resize to square
+      const buffer = await file.arrayBuffer();
+      const resized = await sharp(Buffer.from(buffer))
+        .resize(200, 200, { fit: 'cover' })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      // Upload to Vercel Blob
+      const blob = await put(`politicians/${politicianId}.jpg`, resized, {
+        access: 'public',
+        contentType: 'image/jpeg',
+      });
+
+      // Update database
+      // await sql`UPDATE politicians SET image_url = ${blob.url} WHERE id = ${politicianId}`;
+
+      return Response.json({ url: blob.url });
+    }
+
+================================================================================
+5. IMAGE REQUIREMENTS
+================================================================================
+
+  - Format: JPEG or WebP (JPEG preferred for photos)
+  - Dimensions: Square aspect ratio (1:1), minimum 200x200px
+  - File size: Under 100KB for optimal loading
+  - Content: Head-and-shoulders portrait, centered face
+  - Background: Neutral or transparent (image is displayed in a circle)
+
+The website displays profile pictures in these sizes:
+  - Parliament schematic seats: ~22px circle (tiny, inside SVG)
+  - Tooltip hover: 40x40px circle
+  - Politician profile page: 128x128px circle
+  - Compare view: 56x56px circle
+  - Party members list: 32x32px circle
+
+All images are rendered with object-fit: cover inside a border-radius: 50%
+container, so square images work best.
+
+================================================================================
+6. BATCH UPLOAD SCRIPT
+================================================================================
+
+If you have all photos in a folder, you can batch-upload them:
+
+  Create /scripts/upload-photos.mjs:
+
+  import { put } from '@vercel/blob';
+  import { readdir, readFile } from 'fs/promises';
+  import path from 'path';
+
+  const PHOTOS_DIR = './politician-photos'; // your local folder
+
+  async function main() {
+    const files = await readdir(PHOTOS_DIR);
+    for (const file of files) {
+      if (!file.match(/\.(jpg|jpeg|png|webp)$/i)) continue;
+      const id = path.parse(file).name; // filename without extension = politician ID
+      const data = await readFile(path.join(PHOTOS_DIR, file));
+      const blob = await put(`politicians/${id}.jpg`, data, {
+        access: 'public',
+        contentType: 'image/jpeg',
+      });
+      console.log(`Uploaded ${file} -> ${blob.url}`);
+    }
+  }
+
+  main().catch(console.error);
+
+  Run with: BLOB_READ_WRITE_TOKEN=your_token node scripts/upload-photos.mjs
+
+================================================================================
+7. IMPORTANT NOTES
+================================================================================
+
+  - The crossOrigin="anonymous" attribute is already set on all <img> elements
+    in the codebase, which is needed for canvas rendering and CORS.
+
+  - If using external URLs, make sure to add the domain to next.config.mjs
+    under images.remotePatterns for Next.js Image optimization.
+
+  - The SVG schematic uses <image> elements inside SVG for the tiny seat photos.
+    These work with both local paths and external URLs.
+
+  - For politicians without photos, the code falls back to "/placeholder.svg".
+    Make sure this file exists in /public/ (it does by default).
+
+================================================================================

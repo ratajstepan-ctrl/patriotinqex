@@ -1,0 +1,133 @@
+PATRIOT INDEX - DOCUMENT STRUCTURE
+====================================
+
+This file explains the hierarchy and architecture of the Patriot Index website.
+
+
+TOP LEVEL ARCHITECTURE
+-----------------------
+The website is a single-page Next.js App Router application with client-side
+page transitions (no actual URL routing). Everything renders from app/page.tsx
+which loads the PageRouter component that switches between three "views":
+
+  1. LANDING PAGE (default) - Hero + About section
+  2. PARLIAMENT CHAMBER - Interactive parliament schematic with profiles
+  3. LAWS PAGE (Zakony) - List of all scored laws with dropdown analyses
+
+The transition between these views uses a page-turn animation.
+
+
+FILE HIERARCHY
+---------------
+
+app/
+  layout.tsx .............. Root layout, fonts (Space Grotesk + JetBrains Mono),
+                            metadata, ThemeProvider wrapper
+  page.tsx ................ Entry point, renders <PageRouter />
+  globals.css ............. All CSS: design tokens (light/dark), scrollbar styles,
+                            page-turn animations, fadeIn animation, slide animations
+
+components/
+  page-router.tsx ......... Client-side router. Manages "landing" vs "parliament"
+                            vs "laws" state. Handles page-turn animation between
+                            views. Routes:
+                            - landing -> parliament (via hero button)
+                            - parliament -> laws (via "Zakony" header button)
+                            - laws -> parliament (via "Snemovna" back button)
+                            - parliament -> landing (via "Zpet" button)
+  navbar.tsx .............. Top navigation bar on landing page. Logo, theme toggle,
+                            social media links (Facebook, Instagram, X/Twitter).
+  hero.tsx ................ Main hero section on landing page. Large "PATRIOT INDEX"
+                            title, subtitle, "vzhuru do snemovny" button.
+  about-section.tsx ....... "Jak to funguje" section. Explains the scoring system,
+                            shows "Nejvice se meni" (trending politicians) live feed
+                            with score changes from last vote.
+  parliament-chamber.tsx .. The core interactive parliament schematic. Contains:
+                            - Header with Zpet + Zakony buttons
+                            - Party filter buttons (top bar)
+                            - "Kraje" region filter toggle + region bar (14 Czech regions)
+                            - Politician search bar (always visible, even in compare)
+                            - SVG semicircle seat layout with politician initials
+                            - Hover tooltips (auto-clear on scroll)
+                            - Click to open politician or party profiles
+                            - Staggered seat entrance animation
+                            - Smooth slide animation for profile panels
+                            - Compare mode for politician vs politician or party vs party
+                            - FAQ section at bottom
+  party-profile.tsx ....... Party detail panel. Shows when you click a party button.
+                            Contains: party info, average score box, score change box,
+                            paginated score chart with time navigation arrows,
+                            expandable member list (top 10 or all members),
+                            each member shows score + change since last vote.
+  politician-profile.tsx .. Politician detail panel. Shows when you click a seat.
+                            Contains: photo, personal info, stats grid, score box,
+                            score change box, paginated score chart with arrows,
+                            vote history table.
+  compare-view.tsx ........ Side-by-side comparison of two politicians or two parties.
+                            Shows score difference, chart overlay, stat comparison.
+  laws-page.tsx ........... Laws listing page (Zakony). Shows all scored laws in a
+                            list. Each law row expands into a dropdown showing full
+                            analysis. Reads data from /public/data/law-analyses.txt.
+                            Has category filter bar at the top.
+  twitter-feed.tsx ........ Twitter/X integration panel. Shows alongside party profile.
+                            Configured with per-party hashtags.
+  theme-provider.tsx ...... next-themes ThemeProvider wrapper
+  theme-toggle.tsx ........ Dark/light mode toggle button
+
+lib/
+  parliament-data.ts ...... Core data file. Defines:
+                            - Party interface & PARTIES array (names, colors, seats)
+                            - Politician interface & generatePoliticians() function
+                            - generateSeatPositions() for semicircle layout
+                            - CSV parser & loadFromCSV() for real data loading
+                            - LAW_NAMES array (exported for use by laws page)
+                            - REGIONS array, COMMITTEES array
+                            - Vote generation, name lists
+                            Party order in PARTIES array = wedge order in schematic
+                            (left to right: SPD, Motoriste, ANO, ODS, KDU-CSL,
+                             TOP09, STAN, Pirati)
+  load-data.ts ............ Alternative CSV loader with detailed documentation
+  google-sheets-loader.ts . Google Sheets integration (for collaborative scoring)
+  psp-data-loader.ts ...... Parser for Czech parliament (psp.cz) official data files
+  utils.ts ................ Utility functions (cn for class merging)
+
+public/
+  data/
+    law-analyses.txt ...... Structured text file containing all law analyses.
+                            Format: === LAW_ID: N === followed by key-value fields.
+                            See database.txt for full format docs.
+                            This is what the Laws page reads and displays.
+
+components/ui/ ............ shadcn/ui component library (button, card, etc.)
+hooks/ .................... React hooks (use-mobile, use-toast)
+
+Documentation files (root):
+  database.txt ............ Database schema, API integration guide, migration plan
+  STRUCTURE.txt ........... This file - project architecture overview
+  LOCATIONOFDIFFERENTTHING.txt ... Where to find specific features
+  profilepic.txt .......... Guide for adding real politician profile pictures
+
+
+DATA FLOW
+----------
+  1. PARTIES array defines parties in order (this order = wedge position)
+  2. generatePoliticians() creates politicians grouped by party, with region tags
+  3. generateSeatPositions() creates concentric semicircle positions
+  4. createWedgeMapping() assigns politicians to seats by angle (party wedges)
+  5. Scores are computed from base + cumulative vote history changes
+  6. Region filter ("Kraje") fades out seats not matching the selected region
+  7. Party filter fades out seats not matching the selected party
+  8. Both filters can be active simultaneously
+  9. Laws page reads /public/data/law-analyses.txt and parses it into law objects
+  10. To use real data, see database.txt for migration instructions
+
+
+NAVIGATION FLOW
+----------------
+  Landing Page
+    |
+    v  (click "Vzhuru do snemovny")
+  Parliament Chamber  <------>  Laws Page (Zakony)
+    |                           (via "Zakony" / "Snemovna" buttons)
+    v  (click "Zpet")
+  Landing Page
