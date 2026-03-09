@@ -30,7 +30,7 @@ export function Navbar() {
 
       <div className="flex items-center gap-4">
         <a
-          href="https://facebook.com"
+          href="https://www.facebook.com/profile.php?id=61588035370902"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors duration-300"
@@ -47,7 +47,7 @@ export function Navbar() {
           </svg>
         </a>
         <a
-          href="https://instagram.com"
+          href="https://www.instagram.com/patriotindexcz/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors duration-300"
@@ -70,7 +70,7 @@ export function Navbar() {
           </svg>
         </a>
         <a
-          href="https://twitter.com"
+          href="https://x.com/patriotindexcz/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors duration-300"
