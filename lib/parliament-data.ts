@@ -192,26 +192,26 @@ export function generatePoliticians(): Politician[] {
 
 
 
-// Generate semicircular seating arrangement with balanced distribution
-// Each row gets seats proportional to its arc length so density is even across all rows
-// We generate extra seats (for gaps between party wedges) to ensure smooth layout
+/**
+ * Generate semicircular seating arrangement (Wikipedia-style).
+ * - Exactly 200 seats, no more, no less
+ * - Wider semicircle with fewer rows (7 rows like Wikipedia)
+ * - Each row proportional to arc length
+ */
 export function generateSeatPositions(totalSeats: number) {
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
-  const centerY = 95;
+  const centerY = 98; // Lower center for wider semicircle
 
-  const rows = 10;
-  const minRadius = 15;
-  const maxRadius = 90;
+  const rows = 7;
+  const minRadius = 18;
+  const maxRadius = 92;
   const radiusStep = (maxRadius - minRadius) / (rows - 1);
 
-  const startAngle = Math.PI * 0.04;
-  const endAngle = Math.PI * 0.96;
+  // Wider angle span (more horizontal spread)
+  const startAngle = Math.PI * 0.02;
+  const endAngle = Math.PI * 0.98;
   const angleSpan = endAngle - startAngle;
-
-  // Generate extra seats to account for gaps between party wedges (8 parties * 2 gap seats = 14 extra)
-  const extraSeatsForGaps = 14;
-  const targetSeats = totalSeats + extraSeatsForGaps;
 
   const rowRadii: number[] = [];
   let totalArc = 0;
@@ -224,22 +224,19 @@ export function generateSeatPositions(totalSeats: number) {
   // Proportional seat distribution by arc length
   const rawSeats: number[] = [];
   for (let r = 0; r < rows; r++) {
-    rawSeats.push((rowRadii[r] * angleSpan / totalArc) * targetSeats);
+    rawSeats.push((rowRadii[r] * angleSpan / totalArc) * totalSeats);
   }
 
-  // Round while keeping total correct
+  // Round while keeping total exactly correct
   const rowSeats: number[] = rawSeats.map((s) => Math.round(s));
-  let diff = targetSeats - rowSeats.reduce((a, b) => a + b, 0);
-  // Fix rounding errors by adding/removing from largest rows
+  let diff = totalSeats - rowSeats.reduce((a, b) => a + b, 0);
   while (diff !== 0) {
     if (diff > 0) {
-      // Add to the outer rows first (they have more space)
       for (let r = rows - 1; r >= 0 && diff > 0; r--) {
         rowSeats[r]++;
         diff--;
       }
     } else {
-      // Remove from inner rows first
       for (let r = 0; r < rows && diff < 0; r++) {
         if (rowSeats[r] > 3) {
           rowSeats[r]--;
@@ -249,15 +246,17 @@ export function generateSeatPositions(totalSeats: number) {
     }
   }
 
-  // Generate all seat positions
+  // Generate seat positions row by row
   let seatIndex = 0;
-  for (let row = 0; row < rows && seatIndex < targetSeats; row++) {
+  for (let row = 0; row < rows && seatIndex < totalSeats; row++) {
     const radius = rowRadii[row];
-    const seatsInRow = Math.min(rowSeats[row], targetSeats - seatIndex);
+    const seatsInRow = Math.min(rowSeats[row], totalSeats - seatIndex);
     if (seatsInRow <= 0) continue;
+    
+    // Distribute seats evenly across the arc
     const angleStep = angleSpan / Math.max(seatsInRow - 1, 1);
 
-    for (let s = 0; s < seatsInRow && seatIndex < targetSeats; s++) {
+    for (let s = 0; s < seatsInRow && seatIndex < totalSeats; s++) {
       const angle = startAngle + s * angleStep;
       const x = centerX - radius * Math.cos(angle);
       const y = centerY - radius * Math.sin(angle);

@@ -54,106 +54,108 @@ function getInitials(name: string): string {
 }
 
 /**
- * Wedge layout with visual separation between parties.
+ * Wikipedia-style wedge layout with party cohesion.
  * 
- * 1. Sort seats by angle (left-to-right in the semicircle)
- * 2. Group consecutive seats for each party
- * 3. Add small angular gaps between party wedges
- * 4. Keep each party's members in contiguous rows to improve visual cohesion
+ * Each party gets a proportional angular wedge. Within each wedge,
+ * the party's members are distributed across ALL rows, filling from
+ * the center outward. This ensures each party is visually cohesive
+ * with representation in every row.
+ * 
+ * Angular gaps between parties create the "pie slice" separation effect.
  */
 function createWedgeMapping(
   seatPositions: Array<{ x: number; y: number; row: number }>,
   politicians: Politician[],
 ): number[] {
   const centerX = 50;
-  const centerY = 95;
+  const centerY = 98;
+  const totalSeats = 200;
+  
+  // Gap between parties (in radians) - creates visual separation
+  const gapAngle = 0.025;
+  const numParties = PARTIES.length;
+  const totalGapAngle = gapAngle * (numParties - 1);
+  
+  // Total angle available for seats (excluding gaps)
+  const fullAngleSpan = Math.PI * 0.96; // matches seat generation
+  const usableAngle = fullAngleSpan - totalGapAngle;
 
-  // Calculate angle for each seat
-  const seatsWithAngles = seatPositions.map((seat, i) => ({
-    index: i,
-    angle: Math.atan2(centerY - seat.y, seat.x - centerX),
-    row: seat.row,
-    x: seat.x,
-    y: seat.y,
-  }));
+  // Calculate each party's angular boundaries
+  const partyBoundaries: { party: string; startAngle: number; endAngle: number; seats: number; polStartIdx: number }[] = [];
+  let angleOffset = Math.PI * 0.02; // start angle
+  let polIdx = 0;
+  
+  for (const party of PARTIES) {
+    const partyAngle = (party.seats / totalSeats) * usableAngle;
+    partyBoundaries.push({
+      party: party.name,
+      startAngle: angleOffset,
+      endAngle: angleOffset + partyAngle,
+      seats: party.seats,
+      polStartIdx: polIdx,
+    });
+    polIdx += party.seats;
+    angleOffset += partyAngle + gapAngle;
+  }
 
-  // Sort by angle (right to left in terms of visual placement, higher angle = more left)
-  seatsWithAngles.sort((a, b) => b.angle - a.angle);
+  // Assign each seat to a party based on its angle
+  const seatsWithMeta = seatPositions.map((seat, i) => {
+    const angle = Math.atan2(centerY - seat.y, seat.x - centerX);
+    // Find which party this seat belongs to
+    let assignedParty: typeof partyBoundaries[0] | null = null;
+    for (const pb of partyBoundaries) {
+      if (angle >= pb.startAngle && angle <= pb.endAngle) {
+        assignedParty = pb;
+        break;
+      }
+    }
+    return {
+      index: i,
+      angle,
+      row: seat.row,
+      party: assignedParty,
+    };
+  });
 
-  // Calculate party boundaries (how many seats each party gets, in order)
-  const partySeats: { party: string; count: number; startIdx: number }[] = [];
-  let currentParty = politicians[0]?.party;
-  let startIdx = 0;
-  let count = 0;
-
-  for (let i = 0; i < politicians.length; i++) {
-    if (politicians[i].party === currentParty) {
-      count++;
-    } else {
-      partySeats.push({ party: currentParty, count, startIdx });
-      startIdx = i;
-      currentParty = politicians[i].party;
-      count = 1;
+  // Group seats by party
+  const seatsByParty = new Map<string, typeof seatsWithMeta>();
+  for (const pb of partyBoundaries) {
+    seatsByParty.set(pb.party, []);
+  }
+  for (const seat of seatsWithMeta) {
+    if (seat.party) {
+      seatsByParty.get(seat.party.party)!.push(seat);
     }
   }
-  if (count > 0) {
-    partySeats.push({ party: currentParty, count, startIdx });
-  }
 
-  // Gap size in terms of seats to skip between parties (creates visual separation)
-  const gapSeats = 2;
-  const totalGaps = (partySeats.length - 1) * gapSeats;
+  // Create the mapping
+  const mapping = new Array<number>(politicians.length);
 
-  // Calculate total available seat positions after accounting for gaps
-  const availableSeats = seatsWithAngles.length;
-  
-  // Create mapping: for each politician index -> seat position index
-  const mapping = new Array(politicians.length);
-  
-  let seatCursor = 0;
-  for (let p = 0; p < partySeats.length; p++) {
-    const { count: partyCount, startIdx: polStartIdx } = partySeats[p];
+  for (const pb of partyBoundaries) {
+    const partySeats = seatsByParty.get(pb.party) || [];
     
-    // Get the seats for this party (contiguous block)
-    const partySeatsBlock: typeof seatsWithAngles = [];
-    for (let i = 0; i < partyCount && seatCursor < availableSeats; i++) {
-      partySeatsBlock.push(seatsWithAngles[seatCursor]);
-      seatCursor++;
-    }
-
-    // Sort the party's seats to group by row, then by angle within row
-    // This keeps party members more visually cohesive
-    partySeatsBlock.sort((a, b) => {
+    // Sort party seats: by row first (inner to outer), then by angle within row
+    // This creates nice cohesive blocks
+    partySeats.sort((a, b) => {
       if (a.row !== b.row) return a.row - b.row;
-      return b.angle - a.angle;
+      return a.angle - b.angle;
     });
 
-    // Assign politicians in this party to these seats
-    for (let i = 0; i < partySeatsBlock.length; i++) {
-      const polIdx = polStartIdx + i;
-      if (polIdx < politicians.length) {
-        mapping[polIdx] = partySeatsBlock[i].index;
-      }
-    }
-
-    // Skip gap seats between parties (except after the last party)
-    if (p < partySeats.length - 1) {
-      seatCursor += gapSeats;
+    // Assign politicians to seats
+    for (let i = 0; i < pb.seats && i < partySeats.length; i++) {
+      mapping[pb.polStartIdx + i] = partySeats[i].index;
     }
   }
 
-  // Fill any unmapped politicians with remaining seats
+  // Handle any edge cases where seats weren't assigned
   const usedSeats = new Set(mapping.filter((m) => m !== undefined));
-  let unusedSeatIdx = 0;
+  const unusedSeats = seatsWithMeta.filter(s => !usedSeats.has(s.index));
+  let unusedIdx = 0;
+  
   for (let i = 0; i < politicians.length; i++) {
-    if (mapping[i] === undefined) {
-      while (usedSeats.has(seatsWithAngles[unusedSeatIdx]?.index)) {
-        unusedSeatIdx++;
-      }
-      if (unusedSeatIdx < seatsWithAngles.length) {
-        mapping[i] = seatsWithAngles[unusedSeatIdx].index;
-        unusedSeatIdx++;
-      }
+    if (mapping[i] === undefined && unusedIdx < unusedSeats.length) {
+      mapping[i] = unusedSeats[unusedIdx].index;
+      unusedIdx++;
     }
   }
 
