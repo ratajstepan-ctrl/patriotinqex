@@ -53,22 +53,110 @@ function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-// Wedge layout: sort seats by angle, assign politicians in party order
+/**
+ * Wedge layout with visual separation between parties.
+ * 
+ * 1. Sort seats by angle (left-to-right in the semicircle)
+ * 2. Group consecutive seats for each party
+ * 3. Add small angular gaps between party wedges
+ * 4. Keep each party's members in contiguous rows to improve visual cohesion
+ */
 function createWedgeMapping(
   seatPositions: Array<{ x: number; y: number; row: number }>,
   politicians: Politician[],
 ): number[] {
   const centerX = 50;
   const centerY = 95;
+
+  // Calculate angle for each seat
   const seatsWithAngles = seatPositions.map((seat, i) => ({
     index: i,
     angle: Math.atan2(centerY - seat.y, seat.x - centerX),
+    row: seat.row,
+    x: seat.x,
+    y: seat.y,
   }));
+
+  // Sort by angle (right to left in terms of visual placement, higher angle = more left)
   seatsWithAngles.sort((a, b) => b.angle - a.angle);
-  const mapping = new Array(seatPositions.length);
-  for (let i = 0; i < seatsWithAngles.length && i < politicians.length; i++) {
-    mapping[i] = seatsWithAngles[i].index;
+
+  // Calculate party boundaries (how many seats each party gets, in order)
+  const partySeats: { party: string; count: number; startIdx: number }[] = [];
+  let currentParty = politicians[0]?.party;
+  let startIdx = 0;
+  let count = 0;
+
+  for (let i = 0; i < politicians.length; i++) {
+    if (politicians[i].party === currentParty) {
+      count++;
+    } else {
+      partySeats.push({ party: currentParty, count, startIdx });
+      startIdx = i;
+      currentParty = politicians[i].party;
+      count = 1;
+    }
   }
+  if (count > 0) {
+    partySeats.push({ party: currentParty, count, startIdx });
+  }
+
+  // Gap size in terms of seats to skip between parties (creates visual separation)
+  const gapSeats = 2;
+  const totalGaps = (partySeats.length - 1) * gapSeats;
+
+  // Calculate total available seat positions after accounting for gaps
+  const availableSeats = seatsWithAngles.length;
+  
+  // Create mapping: for each politician index -> seat position index
+  const mapping = new Array(politicians.length);
+  
+  let seatCursor = 0;
+  for (let p = 0; p < partySeats.length; p++) {
+    const { count: partyCount, startIdx: polStartIdx } = partySeats[p];
+    
+    // Get the seats for this party (contiguous block)
+    const partySeatsBlock: typeof seatsWithAngles = [];
+    for (let i = 0; i < partyCount && seatCursor < availableSeats; i++) {
+      partySeatsBlock.push(seatsWithAngles[seatCursor]);
+      seatCursor++;
+    }
+
+    // Sort the party's seats to group by row, then by angle within row
+    // This keeps party members more visually cohesive
+    partySeatsBlock.sort((a, b) => {
+      if (a.row !== b.row) return a.row - b.row;
+      return b.angle - a.angle;
+    });
+
+    // Assign politicians in this party to these seats
+    for (let i = 0; i < partySeatsBlock.length; i++) {
+      const polIdx = polStartIdx + i;
+      if (polIdx < politicians.length) {
+        mapping[polIdx] = partySeatsBlock[i].index;
+      }
+    }
+
+    // Skip gap seats between parties (except after the last party)
+    if (p < partySeats.length - 1) {
+      seatCursor += gapSeats;
+    }
+  }
+
+  // Fill any unmapped politicians with remaining seats
+  const usedSeats = new Set(mapping.filter((m) => m !== undefined));
+  let unusedSeatIdx = 0;
+  for (let i = 0; i < politicians.length; i++) {
+    if (mapping[i] === undefined) {
+      while (usedSeats.has(seatsWithAngles[unusedSeatIdx]?.index)) {
+        unusedSeatIdx++;
+      }
+      if (unusedSeatIdx < seatsWithAngles.length) {
+        mapping[i] = seatsWithAngles[unusedSeatIdx].index;
+        unusedSeatIdx++;
+      }
+    }
+  }
+
   return mapping;
 }
 
@@ -529,14 +617,20 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
                   className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedParty ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
                   {"V\u0161echny"}
                 </button>
-                {activeParties.map((party) => (
-                  <button type="button" key={party.name} onClick={() => handlePartyClick(party.name)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase tracking-wider transition-all ${selectedParty === party.name ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: getColor(party.name), border: "1px solid hsl(var(--foreground) / 0.3)" }} />
-                    {party.shortName}
-                    <span className="opacity-60">{party.seats}</span>
-                  </button>
-                ))}
+                {activeParties.map((party) => {
+                  // Highlight if selected normally OR if selected in compare mode
+                  const isComparePartyLeft = compareMode && compareLeft?.type === "party" && (compareLeft.data as Party).name === party.name;
+                  const isComparePartyRight = compareMode && compareRight?.type === "party" && (compareRight.data as Party).name === party.name;
+                  const isHighlighted = selectedParty === party.name || isComparePartyLeft || isComparePartyRight;
+                  return (
+                    <button type="button" key={party.name} onClick={() => handlePartyClick(party.name)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase tracking-wider transition-all ${isHighlighted ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: getColor(party.name), border: "1px solid hsl(var(--foreground) / 0.3)" }} />
+                      {party.shortName}
+                      <span className="opacity-60">{party.seats}</span>
+                    </button>
+                  );
+                })}
               </>
             )}
             {ft === "kraje" && (

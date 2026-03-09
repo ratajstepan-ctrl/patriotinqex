@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { generatePoliticians, LAW_NAMES } from "@/lib/parliament-data";
+import { generatePoliticians, loadFromApi, mergeApiData, LAW_NAMES, type Politician } from "@/lib/parliament-data";
 
 // L-shaped slot machine lever: horizontal arm from box, bends 90deg up, ends in red ball
 function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) {
@@ -141,6 +141,21 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [leverPulled, setLeverPulled] = useState(false);
 
+  // API integration - same pattern as parliament-chamber
+  const basePoliticians = useMemo(() => generatePoliticians(), []);
+  const [apiMerged, setApiMerged] = useState<Politician[] | null>(null);
+
+  useEffect(() => {
+    loadFromApi().then((data) => {
+      if (data && data.politicians.length > 0) {
+        const merged = mergeApiData(basePoliticians, data.politicians);
+        setApiMerged(merged);
+      }
+    }).catch(() => { /* fallback to generated */ });
+  }, [basePoliticians]);
+
+  const politicians = apiMerged || basePoliticians;
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -156,7 +171,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
 
   // Get all trending politicians sorted by average absolute change across last 3 votes
   const allTrending = useMemo(() => {
-    const allPoliticians = generatePoliticians();
+    const allPoliticians = politicians;
     const withAvgChange = allPoliticians.map((pol) => {
       const lastThree = pol.voteHistory.slice(-3);
       const avgChange = lastThree.length > 0
@@ -172,7 +187,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
       (a, b) => Math.abs(b.lastChange) - Math.abs(a.lastChange),
     );
     return withAvgChange;
-  }, []);
+  }, [politicians]);
 
   const maxPages = Math.ceil(Math.min(allTrending.length, 20) / 4);
   const displayedPoliticians = allTrending.slice(slotPage * 4, slotPage * 4 + 4);

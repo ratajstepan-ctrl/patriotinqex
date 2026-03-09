@@ -194,6 +194,7 @@ export function generatePoliticians(): Politician[] {
 
 // Generate semicircular seating arrangement with balanced distribution
 // Each row gets seats proportional to its arc length so density is even across all rows
+// We generate extra seats (for gaps between party wedges) to ensure smooth layout
 export function generateSeatPositions(totalSeats: number) {
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
@@ -208,6 +209,10 @@ export function generateSeatPositions(totalSeats: number) {
   const endAngle = Math.PI * 0.96;
   const angleSpan = endAngle - startAngle;
 
+  // Generate extra seats to account for gaps between party wedges (8 parties * 2 gap seats = 14 extra)
+  const extraSeatsForGaps = 14;
+  const targetSeats = totalSeats + extraSeatsForGaps;
+
   const rowRadii: number[] = [];
   let totalArc = 0;
   for (let r = 0; r < rows; r++) {
@@ -219,12 +224,12 @@ export function generateSeatPositions(totalSeats: number) {
   // Proportional seat distribution by arc length
   const rawSeats: number[] = [];
   for (let r = 0; r < rows; r++) {
-    rawSeats.push((rowRadii[r] * angleSpan / totalArc) * totalSeats);
+    rawSeats.push((rowRadii[r] * angleSpan / totalArc) * targetSeats);
   }
 
   // Round while keeping total correct
   const rowSeats: number[] = rawSeats.map((s) => Math.round(s));
-  let diff = totalSeats - rowSeats.reduce((a, b) => a + b, 0);
+  let diff = targetSeats - rowSeats.reduce((a, b) => a + b, 0);
   // Fix rounding errors by adding/removing from largest rows
   while (diff !== 0) {
     if (diff > 0) {
@@ -244,15 +249,15 @@ export function generateSeatPositions(totalSeats: number) {
     }
   }
 
-  // Minimum spacing: ensure no row is too tight by capping based on circumference
+  // Generate all seat positions
   let seatIndex = 0;
-  for (let row = 0; row < rows && seatIndex < totalSeats; row++) {
+  for (let row = 0; row < rows && seatIndex < targetSeats; row++) {
     const radius = rowRadii[row];
-    const seatsInRow = Math.min(rowSeats[row], totalSeats - seatIndex);
+    const seatsInRow = Math.min(rowSeats[row], targetSeats - seatIndex);
     if (seatsInRow <= 0) continue;
     const angleStep = angleSpan / Math.max(seatsInRow - 1, 1);
 
-    for (let s = 0; s < seatsInRow && seatIndex < totalSeats; s++) {
+    for (let s = 0; s < seatsInRow && seatIndex < targetSeats; s++) {
       const angle = startAngle + s * angleStep;
       const x = centerX - radius * Math.cos(angle);
       const y = centerY - radius * Math.sin(angle);
