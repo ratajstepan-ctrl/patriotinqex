@@ -203,16 +203,16 @@ export function generatePoliticians(): Politician[] {
 export function generateSeatPositions(_totalSeats: number) {
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
-  const centerY = 75; // Moved up to reduce overall height
+  const centerY = 95; // Near bottom of viewBox
 
-  const rows = 6;
-  const minRadius = 22;
-  const maxRadius = 88; // Larger radius spread for better seat spacing
+  const rows = 8; // More rows = more spacing between seats vertically
+  const minRadius = 18;
+  const maxRadius = 85;
   const radiusStep = (maxRadius - minRadius) / (rows - 1);
 
   // Angular range
-  const startAngle = Math.PI * 0.05;
-  const endAngle = Math.PI * 0.95;
+  const startAngle = Math.PI * 0.06;
+  const endAngle = Math.PI * 0.94;
   const fullAngleSpan = endAngle - startAngle;
 
   // Party seats in order (left to right in semicircle)
@@ -220,13 +220,13 @@ export function generateSeatPositions(_totalSeats: number) {
   const totalSeats = partySeats.reduce((a, b) => a + b, 0); // 200
   const numParties = partySeats.length;
 
-  // Angular gap between parties
-  const gapAngle = 0.035;
+  // Angular gap between parties (larger = more visible separation)
+  const gapAngle = 0.04;
   const totalGapAngle = gapAngle * (numParties - 1);
   const usableAngle = fullAngleSpan - totalGapAngle;
 
   // Radial offset per party (alternating in/out to push wedges apart)
-  const radialOffsets = [0, 1.5, 0, 1.5, 0, 1.5, 0, 1.5];
+  const radialOffsets = [0, 1.8, 0, 1.8, 0, 1.8, 0, 1.8];
 
   // Calculate row capacities (proportional to arc length)
   const rowRadii: number[] = [];

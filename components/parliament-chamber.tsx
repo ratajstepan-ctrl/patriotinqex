@@ -280,8 +280,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const activeParties = PARTIES.filter((p) => p.seats > 0);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
 
-  // Seat radius -- sized for good visibility with 6 rows
-  const seatRadius = 2.8;
+  // Seat radius -- sized for 8 rows with good spacing
+  const seatRadius = 2.4;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
@@ -611,8 +611,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
       {/* Chamber SVG */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg" onMouseMove={handleMouseMove}>
-        <div ref={schematicRef} className="w-full max-w-[1800px] mx-auto" style={{ aspectRatio: "2.2 / 1" }}>
-          <svg ref={svgRef} viewBox="-5 -5 110 95" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
+        <div ref={schematicRef} className="w-full max-w-[1600px] mx-auto" style={{ aspectRatio: "2 / 1" }}>
+          <svg ref={svgRef} viewBox="-2 5 104 95" className="w-full h-full" aria-label="Rozlo\u017een\u00ed Poslaneck\u00e9 sn\u011bmovny">
             {politicians.map((pol, polIndex) => {
               const seatIdx = wedgeMapping[polIndex];
               const seat = seatPositions[seatIdx];
