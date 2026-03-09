@@ -122,7 +122,7 @@ export const LAW_NAMES = [
 const VOTE_OPTIONS: VoteRecord["voted"][] = ["pro", "proti", "zdrzel", "nehlasoval"];
 
 // MMR-style scoring: no cap, starts around 1000-1500, can go negative
-/*
+
 function generateVoteHistory(rng: () => number, startScore: number): VoteRecord[] {
   const history: VoteRecord[] = [];
 
@@ -190,7 +190,7 @@ export function generatePoliticians(): Politician[] {
   return politicians;
 }
 
-*/
+
 
 // Generate semicircular seating arrangement with balanced distribution
 // Each row gets seats proportional to its arc length so density is even across all rows
