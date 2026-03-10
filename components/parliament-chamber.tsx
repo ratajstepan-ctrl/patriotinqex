@@ -144,25 +144,109 @@ const createFadingCache = (
   return cache;
 };
 
-// Wedge layout: sort seats by angle, assign politicians in party order
+/**
+ * Wedge layout — Running Proportional LRM (Largest Remainder Method).
+ *
+ * For each row we compute each party's proportional share of that row's seats.
+ * Crucially, instead of a fixed ideal fraction, we use the REMAINING seats
+ * each party still needs divided by the REMAINING total seats (this row +
+ * future rows).  This running adjustment ensures every party's total across
+ * all rows equals their exact seat count — no trimming or fixup needed.
+ *
+ * Seats within each row are assigned left-to-right, so every party occupies
+ * a contiguous angular block in every row, producing coherent pie-slice wedges.
+ */
 const createWedgeMapping = (
   seatPositions: Array<{ x: number; y: number; row: number }>,
   politicians: Politician[],
 ): number[] => {
   const centerX = 50;
   const centerY = 95;
-  
-  // Create array of {index, angle} and sort once
-  const sorted = seatPositions
-    .map((seat, i) => ({
-      index: i,
-      angle: Math.atan2(centerY - seat.y, seat.x - centerX),
-    }))
-    .sort((a, b) => b.angle - a.angle);
-  
-  const mapping = new Array(seatPositions.length);
-  for (let i = 0; i < Math.min(sorted.length, politicians.length); i++) {
-    mapping[i] = sorted[i].index;
+  const totalSeats = politicians.length;
+
+  // ── 1. Ordered party list & seat counts ──────────────────────────────────
+  // Preserve the order parties first appear in the politicians array; this
+  // matches the PARTIES constant (left-to-right in the hemicycle).
+  const partyOrderMap = new Map<string, number>();
+  for (const pol of politicians) {
+    if (!partyOrderMap.has(pol.party)) partyOrderMap.set(pol.party, partyOrderMap.size);
+  }
+  const partyOrder = Array.from(partyOrderMap.keys());
+  const numParties = partyOrder.length;
+
+  const targetCounts = new Array<number>(numParties).fill(0);
+  // partyOrderMap is populated from the same `politicians` array, so the key
+  // is guaranteed to exist for every politician.
+  for (const pol of politicians) targetCounts[partyOrderMap.get(pol.party)!]++;
+
+  // ── 2. Recover the generation angle for every seat ───────────────────────
+  // Generation formula: x = cx - r·cos(α), y = cy - r·sin(α)
+  // Inverse:            α = atan2(cy - y, cx - x)
+  // Ascending α → left-to-right across the hemicycle (startAngle → endAngle).
+  const genAngle = (s: { x: number; y: number }) =>
+    Math.atan2(centerY - s.y, centerX - s.x);
+
+  // ── 3. Group seats by row; sort each row left → right ────────────────────
+  const rowMap = new Map<number, { idx: number; angle: number }[]>();
+  seatPositions.forEach((seat, idx) => {
+    if (!rowMap.has(seat.row)) rowMap.set(seat.row, []);
+    rowMap.get(seat.row)!.push({ idx, angle: genAngle(seat) });
+  });
+  for (const seats of rowMap.values()) seats.sort((a, b) => a.angle - b.angle);
+  const rows = Array.from(rowMap.keys()).sort((a, b) => a - b);
+
+  // ── 4. Running Proportional LRM ─────────────────────────────────────────
+  // given[p] tracks how many seats party p has received so far.
+  // For each row, ideals are computed as:
+  //   remaining_seats_p / remaining_total_seats * rowCount
+  // This adaptive weighting guarantees every party's final total is exact.
+  const given = new Array<number>(numParties).fill(0);
+  const partyRowSeats: number[][] = Array.from({ length: numParties }, () => []);
+
+  // Precompute suffix sums of row sizes for "remaining total seats"
+  const rowSizes = rows.map(r => rowMap.get(r)!.length);
+  const suffixSum = new Array<number>(rows.length + 1).fill(0);
+  for (let i = rows.length - 1; i >= 0; i--) suffixSum[i] = suffixSum[i + 1] + rowSizes[i];
+
+  for (let ri = 0; ri < rows.length; ri++) {
+    const row = rows[ri];
+    const rowSeats = rowMap.get(row)!;
+    const rowCount = rowSeats.length;
+    const totalRemaining = suffixSum[ri]; // seats in this row + future rows
+    if (totalRemaining === 0) continue;  // safety guard (can't occur with valid input)
+
+    // Ideals: each party's remaining need / total remaining * this row's count
+    const ideals = targetCounts.map((t, p) => (t - given[p]) / totalRemaining * rowCount);
+    const floors = ideals.map(Math.floor);
+    const remainders = ideals.map((v, i) => v - floors[i]);
+
+    // LRM: distribute leftover seats to parties with the largest remainders
+    const extra = rowCount - floors.reduce((a, b) => a + b, 0);
+    const sortedByRemainder = partyOrder
+      .map((_, i) => i)
+      .sort((a, b) => remainders[b] - remainders[a]);
+    const seatsForParty = [...floors];
+    for (let i = 0; i < extra; i++) seatsForParty[sortedByRemainder[i]]++;
+
+    // Update given and assign physical seat positions left-to-right
+    let cursor = 0;
+    for (let p = 0; p < numParties; p++) {
+      for (let s = 0; s < seatsForParty[p]; s++) {
+        partyRowSeats[p].push(rowSeats[cursor++].idx);
+      }
+      given[p] += seatsForParty[p];
+    }
+  }
+
+  // ── 5. Build politician → seat mapping ────────────────────────────────────
+  // Running Proportional LRM guarantees every party's partyRowSeats total
+  // equals its targetCounts exactly, so the mapping is fully populated.
+  const mapping = new Array<number>(totalSeats).fill(-1);
+  let polCursor = 0;
+  for (let p = 0; p < numParties; p++) {
+    for (const seatIdx of partyRowSeats[p]) {
+      if (polCursor < totalSeats) mapping[polCursor++] = seatIdx;
+    }
   }
   return mapping;
 };
