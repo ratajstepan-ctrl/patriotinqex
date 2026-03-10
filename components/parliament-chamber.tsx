@@ -771,7 +771,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
       {/* Chamber SVG */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg" onMouseMove={handleMouseMove}>
         <div ref={schematicRef} className="w-full max-w-[2200px] mx-auto" style={{ aspectRatio: "1.95 / 1" }}>
-          <svg ref={svgRef} viewBox="-42 2 184 94" className="w-full h-full" aria-label="Rozložení Poslanecké sněmovny">
+          <svg ref={svgRef} viewBox="-62 -18 224 115" className="w-full h-full" aria-label="Rozložení Poslanecké sněmovny">
             {politicians.map((pol, polIndex) => {
               const seatIdx = wedgeMapping[polIndex];
               const seat = seatPositions[seatIdx];

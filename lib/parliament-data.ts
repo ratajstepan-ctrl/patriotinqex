@@ -225,10 +225,10 @@ export function generateSeatPositions(_totalSeats: number) {
   const seatsPerRow = [13, 16, 18, 20, 22, 25, 27, 29, 30];
   const rows = seatsPerRow.length;
 
-  // Larger inner radius (32) allows 13 seats in the innermost ring with
-  // comfortable spacing; row gap of 7 spreads rows for visual breathing room.
-  const innerRadius = 32;
-  const rowGap = 7;
+  // Inner radius of 36 and row gap of 9 give comfortable breathing room
+  // between both individual seats within each row and between the rows.
+  const innerRadius = 36;
+  const rowGap = 9;
 
   // Angular span - symmetrical semicircle
   const startAngle = Math.PI * 0.05;
