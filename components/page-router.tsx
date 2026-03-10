@@ -24,7 +24,11 @@ export function PageRouter() {
 
   const navigateTo = useCallback(
     (target: ActivePage, pushHistory = true) => {
-      if (isAnimating) return;
+      console.log("[v0] navigateTo called:", target, "isAnimating:", isAnimating);
+      if (isAnimating) {
+        console.log("[v0] Navigation blocked - already animating");
+        return;
+      }
       setIsAnimating(true);
 
       // Push to browser history (unless triggered by popstate)
@@ -45,6 +49,7 @@ export function PageRouter() {
 
       // Fallback timeout in case animation doesn't fire (e.g., during hot reload)
       const fallbackTimeout = setTimeout(() => {
+        console.log("[v0] Fallback timeout triggered for:", target);
         el.removeEventListener("animationend", handleOutEnd);
         setActivePage(target);
         window.scrollTo({ top: 0, behavior: "instant" });
@@ -54,6 +59,7 @@ export function PageRouter() {
       }, 600);
 
       const handleOutEnd = () => {
+        console.log("[v0] Animation out ended, switching to:", target);
         clearTimeout(fallbackTimeout);
         el.removeEventListener("animationend", handleOutEnd);
         setActivePage(target);

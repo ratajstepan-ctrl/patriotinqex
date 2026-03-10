@@ -203,15 +203,15 @@ export function generateSeatPositions(_totalSeats: number) {
   const centerX = 50;
   const centerY = 95;
 
-  // Exactly 200 seats across 10 complete rows
-  // Inner rows have fewer seats to prevent overlap
-  // 8 + 10 + 13 + 16 + 19 + 22 + 25 + 28 + 30 + 29 = 200
-  const seatsPerRow = [8, 10, 13, 16, 19, 22, 25, 28, 30, 29];
+  // Exactly 200 seats across 11 complete rows
+  // Inner rows have very few seats to prevent overlap
+  // 5 + 7 + 10 + 13 + 16 + 19 + 22 + 25 + 28 + 27 + 28 = 200
+  const seatsPerRow = [5, 7, 10, 13, 16, 19, 22, 25, 28, 27, 28];
   const rows = seatsPerRow.length;
   
   // Radii with generous spacing between rows
-  const innerRadius = 14;
-  const rowGap = 7.8;
+  const innerRadius = 12;
+  const rowGap = 7.0;
   
   // Angular span - symmetrical semicircle
   const startAngle = Math.PI * 0.05;
