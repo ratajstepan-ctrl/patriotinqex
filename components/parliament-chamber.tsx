@@ -62,6 +62,13 @@ const getInitials = (name: string): string => {
 };
 
 // Pre-compute fading logic
+const AGE_BRACKETS_LOOKUP = [
+  { key: "under30", min: 0, max: 29 },
+  { key: "30-40", min: 30, max: 40 },
+  { key: "40-50", min: 41, max: 50 },
+  { key: "50plus", min: 51, max: 200 },
+];
+
 const createFadingCache = (
   politicians: Politician[],
   selectedParty: string | null,
@@ -73,19 +80,30 @@ const createFadingCache = (
   compareRight: { type: "politician" | "party"; data: Politician | Party } | null,
 ): boolean[] => {
   const cache = new Array(politicians.length);
+
+  // Pre-resolve age bracket outside the loop
+  const ageBracket = selectedAge !== null
+    ? AGE_BRACKETS_LOOKUP.find(b => b.key === selectedAge) ?? null
+    : null;
+
+  // Pre-resolve compare party names outside the loop
+  const compareLeftParty = compareMode && compareLeft?.type === "party"
+    ? (compareLeft.data as Party).name
+    : null;
+  const compareRightParty = compareMode && compareRight?.type === "party"
+    ? (compareRight.data as Party).name
+    : null;
   
   for (let i = 0; i < politicians.length; i++) {
     const pol = politicians[i];
     
     // Compare mode fading
-    if (compareMode && compareLeft?.type === "party") {
-      const leftName = (compareLeft.data as Party).name;
-      const rightName = compareRight?.type === "party" ? (compareRight.data as Party).name : null;
-      if (pol.party === leftName) {
+    if (compareLeftParty !== null) {
+      if (pol.party === compareLeftParty) {
         cache[i] = false;
         continue;
       }
-      if (rightName && pol.party === rightName) {
+      if (compareRightParty && pol.party === compareRightParty) {
         cache[i] = false;
         continue;
       }
@@ -112,20 +130,11 @@ const createFadingCache = (
     }
     
     // Age filter
-    if (selectedAge !== null) {
-      const AGE_BRACKETS = [
-        { key: "under30", min: 0, max: 29 },
-        { key: "30-40", min: 30, max: 40 },
-        { key: "40-50", min: 41, max: 50 },
-        { key: "50plus", min: 51, max: 200 },
-      ];
-      const bracket = AGE_BRACKETS.find(b => b.key === selectedAge);
-      if (bracket) {
-        const age = getAge(pol.birthDate);
-        if (age < bracket.min || age > bracket.max) {
-          cache[i] = true;
-          continue;
-        }
+    if (ageBracket !== null) {
+      const age = getAge(pol.birthDate);
+      if (age < ageBracket.min || age > ageBracket.max) {
+        cache[i] = true;
+        continue;
       }
     }
     
@@ -201,13 +210,14 @@ interface SeatCircleProps {
   isCompareLeft: boolean;
   isCompareRight: boolean;
   seatsRevealed: boolean;
-  onMouseEnter: () => void;
+  onMouseEnter: (polIndex: number) => void;
   onMouseLeave: () => void;
-  onClick: () => void;
+  onClick: (polIndex: number) => void;
 }
 
 const SeatCircle = memo(({
   pol,
+  polIndex,
   seat,
   seatRadius,
   faded,
@@ -226,13 +236,16 @@ const SeatCircle = memo(({
   const fadedOpacity = faded ? 0.4 : 1;
   const initials = getInitials(pol.name);
 
+  const handleMouseEnter = useCallback(() => onMouseEnter(polIndex), [onMouseEnter, polIndex]);
+  const handleClick = useCallback(() => onClick(polIndex), [onClick, polIndex]);
+
   return (
     <g
       key={pol.id}
       className="cursor-pointer"
-      onMouseEnter={onMouseEnter}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={onMouseLeave}
-      onClick={onClick}
+      onClick={handleClick}
       style={{
         opacity: seatsRevealed ? fadedOpacity : 0,
         transition: "opacity 0.5s ease",
@@ -317,7 +330,6 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const faqRef = useRef<HTMLDivElement>(null);
   const schematicRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const scrollListenerRef = useRef<boolean>(false);
 
   const basePoliticians = useMemo(() => generatePoliticians(), []);
   const [apiMerged, setApiMerged] = useState<Politician[] | null>(null);
@@ -350,25 +362,21 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
     [politicians, selectedParty, selectedRegion, selectedGender, selectedAge, compareMode, compareLeft, compareRight],
   );
 
-  // **OPTIMIZATION**: Debounced scroll handler
+  // Stable scroll handler using ref to avoid re-registering on hoveredSeat changes
+  const hoveredSeatRef = useRef<number | null>(null);
+  hoveredSeatRef.current = hoveredSeat;
+
   useEffect(() => {
-    if (scrollListenerRef.current) return;
-    
     const handleScroll = () => {
-      if (hoveredSeat !== null) {
+      if (hoveredSeatRef.current !== null) {
         setHoveredSeat(null);
         setTooltipPos(null);
       }
     };
-    
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    scrollListenerRef.current = true;
-    
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      scrollListenerRef.current = false;
-    };
-  }, [hoveredSeat]);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setSeatsRevealed(true), 200);
@@ -381,11 +389,13 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
     return () => clearTimeout(timer);
   }, [selectedParty]);
 
-  // **OPTIMIZATION**: Use requestAnimationFrame for mouse moves
+  // **OPTIMIZATION**: Throttled mouse move handler (16ms = ~60fps)
+  const lastMouseMoveRef = useRef(0);
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    requestAnimationFrame(() => {
-      setTooltipPos({ x: e.clientX, y: e.clientY });
-    });
+    const now = Date.now();
+    if (now - lastMouseMoveRef.current < 16) return;
+    lastMouseMoveRef.current = now;
+    setTooltipPos({ x: e.clientX, y: e.clientY });
   }, []);
 
   const activeParties = useMemo(() => PARTIES.filter((p) => p.seats > 0), []);
@@ -518,6 +528,14 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const showTwitter = selectedPartyProfile && !selectedPolitician;
   const compareLeftPolId = compareMode && compareLeft?.type === "politician" ? (compareLeft.data as Politician).id : -1;
   const compareRightPolId = compareMode && compareRight?.type === "politician" ? (compareRight.data as Politician).id : -1;
+
+  // **OPTIMIZATION**: Stable seat event handlers to preserve SeatCircle memo
+  const handleSeatMouseEnter = useCallback((polIndex: number) => {
+    setHoveredSeat(polIndex);
+  }, []);
+  const handleSeatMouseLeave = useCallback(() => {
+    setHoveredSeat(null);
+  }, []);
 
   // **OPTIMIZATION**: Memoized tooltip style calculation
   const getTooltipStyle = useCallback((): CSSProperties => {
@@ -762,9 +780,9 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
                   isCompareLeft={isCompareLeft}
                   isCompareRight={isCompareRight}
                   seatsRevealed={seatsRevealed}
-                  onMouseEnter={() => setHoveredSeat(polIndex)}
-                  onMouseLeave={() => setHoveredSeat(null)}
-                  onClick={() => handleSeatClick(polIndex)}
+                  onMouseEnter={handleSeatMouseEnter}
+                  onMouseLeave={handleSeatMouseLeave}
+                  onClick={handleSeatClick}
                 />
               );
             })}

@@ -145,7 +145,13 @@ function generateVoteHistory(rng: () => number, startScore: number): VoteRecord[
   return history;
 }
 
+// Module-level cache: generatePoliticians output is deterministic (seeded RNG),
+// so we can compute it once and reuse across all component mounts.
+let _cachedPoliticians: Politician[] | null = null;
+
 export function generatePoliticians(): Politician[] {
+  if (_cachedPoliticians) return _cachedPoliticians;
+
   const rng = seededRandom(42);
   const politicians: Politician[] = [];
 
@@ -187,6 +193,7 @@ export function generatePoliticians(): Politician[] {
       id++;
     }
   }
+  _cachedPoliticians = politicians;
   return politicians;
 }
 
@@ -198,7 +205,14 @@ export function generatePoliticians(): Politician[] {
  * Exactly 200 seats across 9 rows with no outliers.
  * Each row has progressively more seats (proportional to arc length).
  */
+// Cache seat positions by totalSeats to avoid recomputing on every render
+const _seatPositionsCache = new Map<number, Array<{ x: number; y: number; row: number }>>();
+
 export function generateSeatPositions(_totalSeats: number) {
+  if (_seatPositionsCache.has(_totalSeats)) {
+    return _seatPositionsCache.get(_totalSeats)!;
+  }
+
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
   const centerY = 95;
@@ -234,6 +248,7 @@ export function generateSeatPositions(_totalSeats: number) {
     }
   }
 
+  _seatPositionsCache.set(_totalSeats, positions);
   return positions;
 }
 

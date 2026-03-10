@@ -121,12 +121,17 @@ interface HeroProps {
 export function Hero({ onEnterParliament }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
   const { activeSrc } = useGifSequencer();
+  const lastMouseUpdateRef = useRef(0);
 
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      // Throttle to ~60fps (16ms intervals)
+      if (now - lastMouseUpdateRef.current < 16) return;
+      lastMouseUpdateRef.current = now;
       const rect = el.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
       const y = ((e.clientY - rect.top) / rect.height - 0.5) * 10;
@@ -134,7 +139,7 @@ export function Hero({ onEnterParliament }: HeroProps) {
       el.style.setProperty("--mouse-y", `${y}px`);
     };
 
-    el.addEventListener("mousemove", handleMouseMove);
+    el.addEventListener("mousemove", handleMouseMove, { passive: true });
     return () => el.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
@@ -168,6 +173,9 @@ export function Hero({ onEnterParliament }: HeroProps) {
               key={activeSrc ?? "static"}
               alt="Patriot Index"
               className="absolute inset-0 w-full h-auto select-none"
+              loading="eager"
+              decoding="async"
+              style={{ willChange: "opacity" }}
             />
 
             {/* Layout spacer */}
@@ -175,6 +183,9 @@ export function Hero({ onEnterParliament }: HeroProps) {
               src={STATIC_LOGO_SRC}
               alt=""
               className="w-full h-auto opacity-0 pointer-events-none select-none"
+              loading="eager"
+              decoding="async"
+              aria-hidden="true"
             />
           </div>
         </div>
