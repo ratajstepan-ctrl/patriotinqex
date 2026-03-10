@@ -202,8 +202,9 @@ export function generatePoliticians(): Politician[] {
 /**
  * EU Parliament hemicycle - clean, symmetrical layout.
  * 
- * Exactly 200 seats across 9 rows with no outliers.
- * Each row has progressively more seats (proportional to arc length).
+ * Exactly 200 seats across 9 rows, distributed proportionally to arc length.
+ * Inner rows have enough seats so every party (even small ones) appears
+ * without gaps when a global angle-sort is used for seat assignment.
  */
 // Cache seat positions by totalSeats to avoid recomputing on every render
 const _seatPositionsCache = new Map<number, Array<{ x: number; y: number; row: number }>>();
@@ -217,16 +218,18 @@ export function generateSeatPositions(_totalSeats: number) {
   const centerX = 50;
   const centerY = 95;
 
-  // Exactly 200 seats across 11 complete rows
-  // Inner rows have very few seats to prevent overlap
-  // 5 + 7 + 10 + 13 + 16 + 19 + 22 + 25 + 28 + 27 + 28 = 200
-  const seatsPerRow = [5, 7, 10, 13, 16, 19, 22, 25, 28, 27, 28];
+  // 9 rows with monotonically increasing seat counts proportional to arc length.
+  // Row sizes scale with circumference; the larger inner radius ensures all 8
+  // parties receive ≥1 seat per row (after row 0) when the global sort is used.
+  // 13 + 16 + 18 + 20 + 22 + 25 + 27 + 29 + 30 = 200
+  const seatsPerRow = [13, 16, 18, 20, 22, 25, 27, 29, 30];
   const rows = seatsPerRow.length;
-  
-  // Radii with generous spacing between rows
-  const innerRadius = 12;
-  const rowGap = 7.0;
-  
+
+  // Larger inner radius (26) allows 13 seats in the innermost ring without
+  // overlap; row gap of 5 keeps all rows within the SVG viewBox.
+  const innerRadius = 26;
+  const rowGap = 5;
+
   // Angular span - symmetrical semicircle
   const startAngle = Math.PI * 0.05;
   const endAngle = Math.PI * 0.95;
@@ -236,12 +239,12 @@ export function generateSeatPositions(_totalSeats: number) {
   for (let r = 0; r < rows; r++) {
     const count = seatsPerRow[r];
     const radius = innerRadius + r * rowGap;
-    
+
     for (let s = 0; s < count; s++) {
       // Even distribution along the arc
       const t = count > 1 ? s / (count - 1) : 0.5;
       const angle = startAngle + t * angleSpan;
-      
+
       const x = centerX - radius * Math.cos(angle);
       const y = centerY - radius * Math.sin(angle);
       positions.push({ x, y, row: r });
