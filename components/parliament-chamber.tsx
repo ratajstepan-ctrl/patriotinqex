@@ -416,7 +416,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
   const activeParties = useMemo(() => PARTIES.filter((p) => p.seats > 0), []);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
-  const seatRadius = 2.9;
+  const seatRadius = 3.3;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
@@ -770,8 +770,8 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
       {/* Chamber SVG */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg" onMouseMove={handleMouseMove}>
-        <div ref={schematicRef} className="w-full max-w-[2200px] mx-auto" style={{ aspectRatio: "1.8 / 1" }}>
-          <svg ref={svgRef} viewBox="-16 0 132 100" className="w-full h-full" aria-label="Rozložení Poslanecké sněmovny">
+        <div ref={schematicRef} className="w-full max-w-[2200px] mx-auto" style={{ aspectRatio: "1.95 / 1" }}>
+          <svg ref={svgRef} viewBox="-42 2 184 94" className="w-full h-full" aria-label="Rozložení Poslanecké sněmovny">
             {politicians.map((pol, polIndex) => {
               const seatIdx = wedgeMapping[polIndex];
               const seat = seatPositions[seatIdx];
