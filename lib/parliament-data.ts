@@ -201,7 +201,7 @@ export function generatePoliticians(): Politician[] {
 export function generateSeatPositions(_totalSeats: number) {
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
-  const centerY = 55;
+  const centerY = 92;
 
   // Exactly 200 seats across 9 complete rows (no partial/outlier row)
   // 10 + 14 + 18 + 21 + 24 + 27 + 29 + 32 + 25 = 200
@@ -209,12 +209,12 @@ export function generateSeatPositions(_totalSeats: number) {
   const rows = seatsPerRow.length;
   
   // Radii with generous spacing between rows
-  const innerRadius = 10;
-  const rowGap = 4.8;
+  const innerRadius = 12;
+  const rowGap = 8.5;
   
   // Angular span - symmetrical semicircle
-  const startAngle = Math.PI * 0.05;
-  const endAngle = Math.PI * 0.95;
+  const startAngle = Math.PI * 0.04;
+  const endAngle = Math.PI * 0.96;
   const angleSpan = endAngle - startAngle;
 
   // Generate all seat positions row by row
@@ -247,7 +247,7 @@ export function createPartyWedgeMapping(
   politicians: Politician[],
 ): number[] {
   const centerX = 50;
-  const centerY = 55;
+  const centerY = 92;
   
   // Party seats (left to right): SPD 15, Motoriste 13, ANO 80, ODS 27, KDU-CSL 16, TOP09 9, STAN 22, Pirati 18
   const partySeatCounts = [15, 13, 80, 27, 16, 9, 22, 18];
