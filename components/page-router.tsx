@@ -43,7 +43,18 @@ export function PageRouter() {
       el.style.willChange = "transform, opacity";
       el.style.animation = "pageTurnOut 0.5s ease-in forwards";
 
+      // Fallback timeout in case animation doesn't fire (e.g., during hot reload)
+      const fallbackTimeout = setTimeout(() => {
+        el.removeEventListener("animationend", handleOutEnd);
+        setActivePage(target);
+        window.scrollTo({ top: 0, behavior: "instant" });
+        el.style.animation = "";
+        el.style.willChange = "";
+        setIsAnimating(false);
+      }, 600);
+
       const handleOutEnd = () => {
+        clearTimeout(fallbackTimeout);
         el.removeEventListener("animationend", handleOutEnd);
         setActivePage(target);
         window.scrollTo({ top: 0, behavior: "instant" });
