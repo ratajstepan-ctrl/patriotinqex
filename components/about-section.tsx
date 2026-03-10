@@ -244,10 +244,10 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
 
           <div className="flex flex-col gap-6 text-muted-foreground leading-relaxed">
             <p>
-              {"Sledujeme a hodnotíme pro Vás hlasování v poslanecké sněmovně - zaměřujeme se primárně na zákony týkající se národní suverenity, prosperity, síly, bezpečnosti a identity. Hlasování je čin, ten, který o našich politicích vypovídá více než tisíc slov."}
+              Sledujeme a hodnot&iacute;me pro V&aacute;s hlasov&aacute;n&iacute; v poslaneck&eacute; sn&#283;movn&#283; - zam&#283;&#345;ujeme se prim&aacute;rn&#283; na z&aacute;kony t&yacute;kaj&iacute;c&iacute; se n&aacute;rodn&iacute; suverenity, prosperity, s&iacute;ly, bezpe&#269;nosti a identity. Hlasov&aacute;n&iacute; je &#269;in, ten, kter&yacute; o na&scaron;ich polic&iacute;ch vypov&iacute;d&aacute; v&iacute;ce ne&#382; tis&iacute;c slov.
             </p>
             <p>
-            {"Cheme se zabývat tím, co se děje nyní, proto také hodnotíme poslaneckou sněmovnu takovou, jaká vznikla volbami 3-4. října 2025. Jednotlivé zákony vážíme jak z hlediska důležitosti, tak z jejich důsledků pro sílu České Republiky. Jsme féroví - hodnotíme pouze zákon jako takoví a následně dle hlasování přidelujeme/odebíráme body všem stejně."}
+              Chceme se zab&yacute;vat t&iacute;m, co se d&#283;je nyn&iacute;, proto tak&eacute; hodnot&iacute;me poslaneckou sn&#283;movnu takovou, jak&aacute; vznikla volbami 3-4. &#345;&iacute;jna 2025. Jednotliv&eacute; z&aacute;kony v&aacute;&#382;&iacute;me jak z hlediska d&#367;le&#382;itosti, tak z jejich d&#367;sledk&#367; pro s&iacute;lu &#268;esk&eacute; Republiky. Jsme f&eacute;rov&iacute; - hodnot&iacute;me pouze z&aacute;kon jako takov&yacute; a n&aacute;sledn&#283; dle hlasov&aacute;n&iacute; p&#345;id&#283;lujeme/odeb&iacute;r&aacute;me body v&scaron;em stejn&#283;.
             </p>
           </div>
 
