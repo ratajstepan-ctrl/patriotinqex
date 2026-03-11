@@ -205,7 +205,7 @@ type FilterType = "strany" | "kraje" | "vek" | "pohlavi";
 const AGE_BRACKETS: { key: string; label: string; min: number; max: number }[] = [
   { key: "under30", label: "Do 30 let", min: 0, max: 29 },
   { key: "30-40", label: "30–40 let", min: 30, max: 40 },
-  { key: "40-50", label: "40–50 let", min: 41, max: 50 },
+  { key: "40-50", label: "40��50 let", min: 41, max: 50 },
   { key: "50plus", label: "50+ let", min: 51, max: 200 },
 ];
 
@@ -331,10 +331,9 @@ const SeatCircle = memo(({
           textAnchor="middle"
           dominantBaseline="central"
           fontSize={2.6}
-          fontWeight="900"
-          fontFamily="system-ui, -apple-system, sans-serif"
+          fontWeight="800"
           fill="#ffffff"
-          className="pointer-events-none select-none"
+          className="pointer-events-none select-none font-mono"
           style={{ textShadow: "0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.5)" }}
         >
           {initials}
