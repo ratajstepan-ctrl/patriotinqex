@@ -221,19 +221,39 @@ export function generateSeatPositions(_totalSeats: number) {
   // 9 rows with monotonically increasing seat counts proportional to arc length.
   // Row sizes scale with circumference; the larger inner radius ensures all 8
   // parties receive ≥1 seat per row (after row 0) when the global sort is used.
-  // 13 + 16 + 18 + 20 + 22 + 25 + 27 + 29 + 30 = 200
-  const seatsPerRow = [13, 16, 18, 20, 22, 25, 27, 29, 30];
+  // 12 + 14 + 16 + 18 + 21 + 24 + 27 + 30 + 33 = 195 (adjusted for 200 total)
+  // Adjusted: 12 + 15 + 17 + 19 + 22 + 25 + 28 + 31 + 31 = 200
+  const seatsPerRow = [12, 15, 17, 19, 22, 25, 28, 31, 31];
   const rows = seatsPerRow.length;
 
-  // Larger inner radius (32) allows 13 seats in the innermost ring with
-  // comfortable spacing; row gap of 7 spreads rows for visual breathing room.
-  const innerRadius = 32;
-  const rowGap = 7;
+  // Larger inner radius (30) with increased row gap (8) for more breathing room
+  // between seats both horizontally (fewer seats per row) and vertically.
+  const innerRadius = 30;
+  const rowGap = 8;
 
-  // Angular span - symmetrical semicircle
-  const startAngle = Math.PI * 0.05;
-  const endAngle = Math.PI * 0.95;
+  // Angular span - symmetrical semicircle with margins
+  const startAngle = Math.PI * 0.06;
+  const endAngle = Math.PI * 0.94;
   const angleSpan = endAngle - startAngle;
+
+  // Party proportions for creating gaps between party boundaries
+  // SPD 15, Motoriste 13, ANO 80, ODS 27, KDU-CSL 16, TOP09 9, STAN 22, Pirati 18 = 200
+  const partyProportions = [15, 13, 80, 27, 16, 9, 22, 18];
+  const totalSeats = partyProportions.reduce((a, b) => a + b, 0);
+  const numParties = partyProportions.length;
+  
+  // Calculate cumulative proportions for party boundaries (as fractions 0-1)
+  const partyBoundaries: number[] = [];
+  let cumulative = 0;
+  for (let p = 0; p < numParties - 1; p++) {
+    cumulative += partyProportions[p];
+    partyBoundaries.push(cumulative / totalSeats);
+  }
+  
+  // Angular gap to insert at each party boundary
+  const gapAngle = Math.PI * 0.012; // ~2.2 degrees per gap
+  const totalGapAngle = gapAngle * (numParties - 1);
+  const effectiveAngleSpan = angleSpan - totalGapAngle;
 
   // Generate all seat positions row by row
   for (let r = 0; r < rows; r++) {
@@ -241,9 +261,18 @@ export function generateSeatPositions(_totalSeats: number) {
     const radius = innerRadius + r * rowGap;
 
     for (let s = 0; s < count; s++) {
-      // Even distribution along the arc
+      // Calculate base position as fraction along the arc
       const t = count > 1 ? s / (count - 1) : 0.5;
-      const angle = startAngle + t * angleSpan;
+      
+      // Count how many party boundaries this seat has passed
+      let passedBoundaries = 0;
+      for (const boundary of partyBoundaries) {
+        if (t > boundary + 0.01) passedBoundaries++;
+      }
+      
+      // Calculate angle with gap offsets
+      const baseAngle = startAngle + t * effectiveAngleSpan;
+      const angle = baseAngle + passedBoundaries * gapAngle;
 
       const x = centerX - radius * Math.cos(angle);
       const y = centerY - radius * Math.sin(angle);

@@ -55,10 +55,12 @@ const PARTY_COLORS: Record<string, string> = {
 
 const getColor = (partyName: string): string => PARTY_COLORS[partyName] || "#666666";
 
-// Extract initials - memoized
+// Extract initials - memoized (with space separator)
 const getInitials = (name: string): string => {
   const parts = name.split(" ");
-  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+  const first = parts[0]?.[0] || "";
+  const last = parts[1]?.[0] || "";
+  return (first + " " + last).toUpperCase().trim();
 };
 
 // Pre-compute fading logic
@@ -268,7 +270,7 @@ const SeatCircle = memo(({
       }}
     >
       {isHighlighted && (
-        <circle cx={seat.x} cy={seat.y} r={r + 1} fill="none" stroke="#ef4444" strokeWidth={0.5} />
+        <circle cx={seat.x} cy={seat.y} r={r + 0.4} fill="none" stroke="#ef4444" strokeWidth={0.4} />
       )}
       {!faded && (
         <circle
@@ -304,12 +306,13 @@ const SeatCircle = memo(({
           y={seat.y}
           textAnchor="middle"
           dominantBaseline="central"
-          fontSize={2.15}
-          fontWeight="900"
-          fontFamily="monospace"
+          fontSize={1.6}
+          fontWeight="800"
+          fontFamily="system-ui, sans-serif"
+          letterSpacing="0.15"
           fill="#ffffff"
           className="pointer-events-none select-none"
-          style={{ textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.3)" }}
+          style={{ textShadow: "0 0 1.5px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.4)" }}
         >
           {initials}
         </text>
@@ -416,7 +419,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
   const activeParties = useMemo(() => PARTIES.filter((p) => p.seats > 0), []);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
-  const seatRadius = 3.3;
+  const seatRadius = 2.8;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
