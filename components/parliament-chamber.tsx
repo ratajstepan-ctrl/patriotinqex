@@ -55,6 +55,23 @@ const PARTY_COLORS: Record<string, string> = {
 
 const getColor = (partyName: string): string => PARTY_COLORS[partyName] || "#666666";
 
+// Get contrasting/inverted color for highlight visibility on any party color
+const getContrastColor = (hexColor: string): string => {
+  // Parse hex color
+  const hex = hexColor.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Invert the color
+  const invR = 255 - r;
+  const invG = 255 - g;
+  const invB = 255 - b;
+  
+  // Return inverted color as hex
+  return `#${invR.toString(16).padStart(2, "0")}${invG.toString(16).padStart(2, "0")}${invB.toString(16).padStart(2, "0")}`;
+};
+
 // Extract initials - memoized
 const getInitials = (name: string): string => {
   const parts = name.split(" ");
@@ -249,11 +266,23 @@ const SeatCircle = memo(({
   const isHighlighted = isSelected || isCompareLeft || isCompareRight || isHovered;
   const r = isHighlighted ? seatRadius * 1.15 : seatRadius;
   const color = getColor(pol.party);
+  const contrastColor = getContrastColor(color);
   const fadedOpacity = faded ? 0.4 : 1;
   const initials = getInitials(pol.name);
 
   const handleMouseEnter = useCallback(() => onMouseEnter(polIndex), [onMouseEnter, polIndex]);
   const handleClick = useCallback(() => onClick(polIndex), [onClick, polIndex]);
+
+  // Determine stroke color - use inverted contrast color when highlighted
+  const strokeColor = isHighlighted
+    ? contrastColor
+    : isHovered
+      ? "hsl(var(--foreground))"
+      : faded
+        ? "hsl(var(--muted-foreground) / 0.4)"
+        : "rgba(255,255,255,0.35)";
+  
+  const strokeWidth = isHighlighted ? 0.7 : isHovered ? 0.4 : 0.25;
 
   return (
     <g
@@ -267,10 +296,7 @@ const SeatCircle = memo(({
         transition: "opacity 0.5s ease",
       }}
     >
-      {isHighlighted && (
-        <circle cx={seat.x} cy={seat.y} r={r + 1} fill="none" stroke="#ef4444" strokeWidth={0.5} />
-      )}
-      {!faded && (
+      {!faded && !isHighlighted && (
         <circle
           cx={seat.x}
           cy={seat.y}
@@ -285,10 +311,10 @@ const SeatCircle = memo(({
         cy={seat.y}
         r={r}
         fill={faded ? "hsl(var(--muted-foreground) / 0.25)" : color}
-        stroke={isHovered ? "hsl(var(--foreground))" : faded ? "hsl(var(--muted-foreground) / 0.4)" : "rgba(255,255,255,0.35)"}
-        strokeWidth={isHovered ? 0.4 : 0.25}
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
       />
-      {!faded && (
+      {!faded && !isHighlighted && (
         <circle
           cx={seat.x}
           cy={seat.y}
@@ -304,12 +330,12 @@ const SeatCircle = memo(({
           y={seat.y}
           textAnchor="middle"
           dominantBaseline="central"
-          fontSize={2.15}
+          fontSize={2.6}
           fontWeight="900"
-          fontFamily="monospace"
+          fontFamily="system-ui, -apple-system, sans-serif"
           fill="#ffffff"
           className="pointer-events-none select-none"
-          style={{ textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.3)" }}
+          style={{ textShadow: "0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.5)" }}
         >
           {initials}
         </text>
