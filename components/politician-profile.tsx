@@ -114,7 +114,7 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare,
   };
 
   const sc = scoreColor(politician.score);
-  const birthLabel = politician.gender === "female" ? "Narozená" : "Narozený";
+  const birthLabel = politician.gender === "Žena" ? "Narozená" : "Narozený";
   const voteLabel = (v: string) => { switch (v) { case "pro": return "Pro"; case "proti": return "Proti"; case "zdrzel": return "Zdr\u017eel"; default: return "Nehlas."; } };
   const voteColor = (v: string) => { switch (v) { case "pro": return "#22c55e"; case "proti": return "#ef4444"; default: return "#eab308"; } };
 
