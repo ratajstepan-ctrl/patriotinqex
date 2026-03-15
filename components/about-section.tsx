@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { Politician, LAW_NAMES } from "@/lib/parliament-data";
+
+import { generatePoliticians, loadFromApi, mergeApiData, LAW_NAMES, type Politician } from "@/lib/parliament-data";
+
 
 // L-shaped slot machine lever: horizontal arm from box, bends 90deg up, ends in red ball
 function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) {
@@ -141,6 +143,21 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [leverPulled, setLeverPulled] = useState(false);
 
+  // API integration - same pattern as parliament-chamber
+  const basePoliticians = useMemo(() => generatePoliticians(), []);
+  const [apiMerged, setApiMerged] = useState<Politician[] | null>(null);
+
+  useEffect(() => {
+    loadFromApi().then((data) => {
+      if (data && data.politicians.length > 0) {
+        const merged = mergeApiData(basePoliticians, data.politicians);
+        setApiMerged(merged);
+      }
+    }).catch(() => { /* fallback to generated */ });
+  }, [basePoliticians]);
+
+  const politicians = apiMerged || basePoliticians;
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -156,7 +173,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
 
   // Get all trending politicians sorted by average absolute change across last 3 votes
   const allTrending = useMemo(() => {
-    const allPoliticians = generatePoliticians();
+    const allPoliticians = politicians;
     const withAvgChange = allPoliticians.map((pol) => {
       const lastThree = pol.voteHistory.slice(-3);
       const avgChange = lastThree.length > 0
@@ -172,7 +189,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
       (a, b) => Math.abs(b.lastChange) - Math.abs(a.lastChange),
     );
     return withAvgChange;
-  }, []);
+  }, [politicians]);
 
   const maxPages = Math.ceil(Math.min(allTrending.length, 20) / 4);
   const displayedPoliticians = allTrending.slice(slotPage * 4, slotPage * 4 + 4);
@@ -229,21 +246,21 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
 
           <div className="flex flex-col gap-6 text-muted-foreground leading-relaxed">
             <p>
-              {"Sledujeme a hodnotíme pro Vás hlasování v poslanecké sněmovně - zaměřujeme se primárně na zákony týkající se národní suverenity, prosperity, síly, bezpečnosti a identity. Hlasování je čin, ten, který o našich politicích vypovídá více než tisíc slov."}
+              Sledujeme a hodnot&iacute;me pro V&aacute;s hlasov&aacute;n&iacute; v poslaneck&eacute; sn&#283;movn&#283; - zam&#283;&#345;ujeme se prim&aacute;rn&#283; na z&aacute;kony t&yacute;kaj&iacute;c&iacute; se n&aacute;rodn&iacute; suverenity, prosperity, s&iacute;ly, bezpe&#269;nosti a identity. Hlasov&aacute;n&iacute; je &#269;in, ten, kter&yacute; o na&scaron;ich polic&iacute;ch vypov&iacute;d&aacute; v&iacute;ce ne&#382; tis&iacute;c slov.
             </p>
             <p>
-            {"Cheme se zabývat tím, co se děje nyní, proto také hodnotíme poslaneckou sněmovnu takovou, jaká vznikla volbami 3-4. října 2025. Jednotlivé zákony vážíme jak z hlediska důležitosti, tak z jejich důsledků pro sílu České Republiky. Jsme féroví - hodnotíme pouze zákon jako takoví a následně dle hlasování přidelujeme/odebíráme body všem stejně."}
+              Chceme se zab&yacute;vat t&iacute;m, co se d&#283;je nyn&iacute;, proto tak&eacute; hodnot&iacute;me poslaneckou sn&#283;movnu takovou, jak&aacute; vznikla volbami 3-4. &#345;&iacute;jna 2025. Jednotliv&eacute; z&aacute;kony v&aacute;&#382;&iacute;me jak z hlediska d&#367;le&#382;itosti, tak z jejich d&#367;sledk&#367; pro s&iacute;lu &#268;esk&eacute; Republiky. Jsme f&eacute;rov&iacute; - hodnot&iacute;me pouze z&aacute;kon jako takov&yacute; a n&aacute;sledn&#283; dle hlasov&aacute;n&iacute; p&#345;id&#283;lujeme/odeb&iacute;r&aacute;me body v&scaron;em stejn&#283;.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 mt-4">
-            <div className="flex flex-col gap-2 p-4 border border-border">
-              <span className="text-2xl md:text-3xl font-bold text-primary font-mono">{"Nikomu nenadržujeme."}</span>
-              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{"Stranická příslušnost se skórem nepohne."}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+            <div className="flex flex-col gap-2 p-4 border border-border min-w-0">
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary font-mono leading-tight" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Nikomu nenadržujeme."}</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Stranická příslušnost se skórem nepohne."}</span>
             </div>
-            <div className="flex flex-col gap-2 p-4 border border-border">
-              <span className="text-2xl md:text-3xl font-bold text-primary font-mono">{"Spolupracujeme s odborníky."}</span>
-              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{"Zákonné analýzy hodnotíme ve spolupráci s kvalifikovanými experty."}</span>
+            <div className="flex flex-col gap-2 p-4 border border-border min-w-0">
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary font-mono leading-tight" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Spolupracujeme s odborníky."}</span>
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Zákonné analýzy hodnotíme ve spolupráci s kvalifikovanými experty."}</span>
             </div>
           </div>
         </div>
@@ -313,7 +330,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
             <button
               type="button"
               onClick={onNavigateToLaws}
-              className="mt-6 w-full flex items-center justify-center gap-3 px-6 py-4 border border-border bg-secondary hover:bg-foreground hover:text-background transition-all group"
+              className="mt-6 w-full flex items-center justify-center gap-3 px-6 py-4 border-2 border-primary/60 text-primary hover:bg-primary hover:text-primary-foreground transition-all bg-transparent group"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="flex-shrink-0">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />

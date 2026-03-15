@@ -10,13 +10,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Politician } from "@/lib/parliament-data";
+import { getAge, type Politician } from "@/lib/parliament-data";
 
 interface PoliticianProfileProps {
   politician: Politician;
   onClose: () => void;
   onGoToParty?: (partyName: string) => void;
   onCompare?: (politician: Politician) => void;
+  onFilterByRegion?: (region: string) => void;
+  onFilterByAge?: (birthDate: string) => void;
 }
 
 const VISIBLE_LAWS = 7;
@@ -54,7 +56,7 @@ function scoreColor(score: number): string {
   return "#ef4444";
 }
 
-export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare }: PoliticianProfileProps) {
+export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare, onFilterByRegion, onFilterByAge }: PoliticianProfileProps) {
   const profileRef = useRef<HTMLDivElement>(null);
   const [chartOffset, setChartOffset] = useState<number | null>(null);
   const [voteOffset, setVoteOffset] = useState<number | null>(null);
@@ -159,10 +161,11 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
                   {politician.party}
                 </button>
                 {politician.region && (
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider bg-secondary text-muted-foreground">
+                  <button type="button" onClick={() => onFilterByRegion?.(politician.region!)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider bg-secondary text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all cursor-pointer">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                     {politician.region}
-                  </span>
+                  </button>
                 )}
               </div>
             </div>
@@ -176,10 +179,12 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
             </div>
 
             <div className="grid grid-cols-2 gap-3 w-full">
-              <div className="p-3 border border-border bg-background">
+              <button type="button" onClick={() => onFilterByAge?.(politician.birthDate)}
+                className="p-3 border border-border bg-background text-left hover:bg-foreground/5 transition-all cursor-pointer">
                 <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">{birthLabel}</span>
                 <span className="text-sm font-bold text-foreground font-mono">{politician.birthDate}</span>
-              </div>
+                <span className="text-xs font-mono text-muted-foreground block mt-0.5">({getAge(politician.birthDate)} let)</span>
+              </button>
               {/* Score change box -- smaller */}
               <div className="p-3 border border-border bg-background flex flex-col items-center">
                 <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">{"Zm\u011bna"}</span>

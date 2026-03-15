@@ -122,6 +122,7 @@ export const LAW_NAMES = [
 const VOTE_OPTIONS: VoteRecord["voted"][] = ["pro", "proti", "zdrzel", "nehlasoval"];
 
 // MMR-style scoring: no cap, starts around 1000-1500, can go negative
+
 function generateVoteHistory(rng: () => number, startScore: number): VoteRecord[] {
   const history: VoteRecord[] = [];
 
@@ -144,7 +145,13 @@ function generateVoteHistory(rng: () => number, startScore: number): VoteRecord[
   return history;
 }
 
+// Module-level cache: generatePoliticians output is deterministic (seeded RNG),
+// so we can compute it once and reuse across all component mounts.
+let _cachedPoliticians: Politician[] | null = null;
+
 export function generatePoliticians(): Politician[] {
+  if (_cachedPoliticians) return _cachedPoliticians;
+
   const rng = seededRandom(42);
   const politicians: Politician[] = [];
 
@@ -186,79 +193,176 @@ export function generatePoliticians(): Politician[] {
       id++;
     }
   }
+  _cachedPoliticians = politicians;
   return politicians;
 }
 
-// Generate semicircular seating arrangement with balanced distribution
-// Each row gets seats proportional to its arc length so density is even across all rows
-export function generateSeatPositions(totalSeats: number) {
+
+
+/**
+ * EU Parliament hemicycle - clean, symmetrical layout.
+ * 
+ * Exactly 200 seats across 9 rows, distributed proportionally to arc length.
+ * Inner rows have enough seats so every party (even small ones) appears
+ * without gaps when a global angle-sort is used for seat assignment.
+ */
+// Cache seat positions by totalSeats to avoid recomputing on every render
+const _seatPositionsCache = new Map<number, Array<{ x: number; y: number; row: number }>>();
+
+export function generateSeatPositions(_totalSeats: number) {
+  if (_seatPositionsCache.has(_totalSeats)) {
+    return _seatPositionsCache.get(_totalSeats)!;
+  }
+
   const positions: Array<{ x: number; y: number; row: number }> = [];
   const centerX = 50;
   const centerY = 95;
 
-  const rows = 10;
-  const minRadius = 15;
-  const maxRadius = 90;
-  const radiusStep = (maxRadius - minRadius) / (rows - 1);
+  // 9 rows with monotonically increasing seat counts proportional to arc length.
+  // Row sizes scale with circumference; the larger inner radius ensures all 8
+  // parties receive ≥1 seat per row (after row 0) when the global sort is used.
+  // 13 + 16 + 18 + 20 + 22 + 25 + 27 + 29 + 30 = 200
+  const seatsPerRow = [13, 16, 18, 20, 22, 25, 27, 29, 30];
+  const rows = seatsPerRow.length;
 
-  const startAngle = Math.PI * 0.04;
-  const endAngle = Math.PI * 0.96;
+  // Larger inner radius (32) allows 13 seats in the innermost ring with
+  // comfortable spacing; row gap of 7 spreads rows for visual breathing room.
+  const innerRadius = 32;
+  const rowGap = 7;
+
+  // Angular span - symmetrical semicircle
+  const startAngle = Math.PI * 0.05;
+  const endAngle = Math.PI * 0.95;
   const angleSpan = endAngle - startAngle;
 
-  const rowRadii: number[] = [];
-  let totalArc = 0;
+  // Generate all seat positions row by row
   for (let r = 0; r < rows; r++) {
-    const radius = minRadius + r * radiusStep;
-    rowRadii.push(radius);
-    totalArc += radius * angleSpan;
-  }
+    const count = seatsPerRow[r];
+    const radius = innerRadius + r * rowGap;
 
-  // Proportional seat distribution by arc length
-  const rawSeats: number[] = [];
-  for (let r = 0; r < rows; r++) {
-    rawSeats.push((rowRadii[r] * angleSpan / totalArc) * totalSeats);
-  }
+    for (let s = 0; s < count; s++) {
+      // Even distribution along the arc
+      const t = count > 1 ? s / (count - 1) : 0.5;
+      const angle = startAngle + t * angleSpan;
 
-  // Round while keeping total correct
-  const rowSeats: number[] = rawSeats.map((s) => Math.round(s));
-  let diff = totalSeats - rowSeats.reduce((a, b) => a + b, 0);
-  // Fix rounding errors by adding/removing from largest rows
-  while (diff !== 0) {
-    if (diff > 0) {
-      // Add to the outer rows first (they have more space)
-      for (let r = rows - 1; r >= 0 && diff > 0; r--) {
-        rowSeats[r]++;
-        diff--;
-      }
-    } else {
-      // Remove from inner rows first
-      for (let r = 0; r < rows && diff < 0; r++) {
-        if (rowSeats[r] > 3) {
-          rowSeats[r]--;
-          diff++;
-        }
-      }
-    }
-  }
-
-  // Minimum spacing: ensure no row is too tight by capping based on circumference
-  let seatIndex = 0;
-  for (let row = 0; row < rows && seatIndex < totalSeats; row++) {
-    const radius = rowRadii[row];
-    const seatsInRow = Math.min(rowSeats[row], totalSeats - seatIndex);
-    if (seatsInRow <= 0) continue;
-    const angleStep = angleSpan / Math.max(seatsInRow - 1, 1);
-
-    for (let s = 0; s < seatsInRow && seatIndex < totalSeats; s++) {
-      const angle = startAngle + s * angleStep;
       const x = centerX - radius * Math.cos(angle);
       const y = centerY - radius * Math.sin(angle);
-      positions.push({ x, y, row });
-      seatIndex++;
+      positions.push({ x, y, row: r });
     }
   }
 
+  _seatPositionsCache.set(_totalSeats, positions);
   return positions;
+}
+
+/**
+ * Maps politicians to seats ensuring:
+ * 1. Each party forms a contiguous wedge (no splits)
+ * 2. Each party has at least 1 seat in the innermost row
+ * 3. Parties are arranged left-to-right in order
+ */
+export function createPartyWedgeMapping(
+  seatPositions: Array<{ x: number; y: number; row: number }>,
+  politicians: Politician[],
+): number[] {
+  const centerX = 50;
+  const centerY = 95;
+  
+  // Party seats (left to right): SPD 15, Motoriste 13, ANO 80, ODS 27, KDU-CSL 16, TOP09 9, STAN 22, Pirati 18
+  const partySeatCounts = [15, 13, 80, 27, 16, 9, 22, 18];
+  const numParties = partySeatCounts.length;
+  
+  // Calculate angle for each seat and group by row
+  const seatsWithMeta = seatPositions.map((seat, idx) => ({
+    idx,
+    angle: Math.atan2(centerY - seat.y, seat.x - centerX),
+    row: seat.row,
+  }));
+  
+  // Group seats by row
+  const seatsByRow: Map<number, typeof seatsWithMeta> = new Map();
+  for (const seat of seatsWithMeta) {
+    if (!seatsByRow.has(seat.row)) seatsByRow.set(seat.row, []);
+    seatsByRow.get(seat.row)!.push(seat);
+  }
+  
+  // Sort each row by angle (high to low = left to right visually)
+  for (const rowSeats of seatsByRow.values()) {
+    rowSeats.sort((a, b) => b.angle - a.angle);
+  }
+  
+  // Get all row numbers sorted (innermost first)
+  const rowNumbers = Array.from(seatsByRow.keys()).sort((a, b) => a - b);
+  const innermostRow = rowNumbers[0];
+  const innermostSeats = seatsByRow.get(innermostRow)!;
+  
+  // STEP 1: Reserve 1 seat per party in the innermost row (8 parties, row has 10 seats)
+  // Distribute these 8 reserved seats evenly across the 10 available
+  const reservedInnerSeats: { partyIdx: number; seatIdx: number }[] = [];
+  const innerSeatStep = innermostSeats.length / numParties;
+  
+  for (let p = 0; p < numParties; p++) {
+    const seatPosition = Math.floor(p * innerSeatStep + innerSeatStep / 2);
+    const clampedPos = Math.min(seatPosition, innermostSeats.length - 1);
+    reservedInnerSeats.push({
+      partyIdx: p,
+      seatIdx: innermostSeats[clampedPos].idx,
+    });
+  }
+  
+  // Mark reserved seats as used
+  const usedSeatIndices = new Set(reservedInnerSeats.map(r => r.seatIdx));
+  
+  // STEP 2: For remaining seats, sort all by angle and assign to parties in contiguous blocks
+  const remainingSeats = seatsWithMeta
+    .filter(s => !usedSeatIndices.has(s.idx))
+    .sort((a, b) => b.angle - a.angle); // Left to right
+  
+  // Calculate how many additional seats each party needs (total - 1 reserved)
+  const additionalNeeded = partySeatCounts.map(count => count - 1);
+  
+  // Assign remaining seats to parties in order
+  const partyAssignments: Map<number, number[]> = new Map();
+  for (let p = 0; p < numParties; p++) {
+    partyAssignments.set(p, [reservedInnerSeats[p].seatIdx]);
+  }
+  
+  let seatCursor = 0;
+  for (let p = 0; p < numParties; p++) {
+    const needed = additionalNeeded[p];
+    const assignments = partyAssignments.get(p)!;
+    
+    for (let i = 0; i < needed && seatCursor < remainingSeats.length; i++) {
+      assignments.push(remainingSeats[seatCursor].idx);
+      seatCursor++;
+    }
+  }
+  
+  // STEP 3: Create final mapping - politician index to seat index
+  // Sort each party's seats by row (inner first) then angle for nice visual flow
+  const mapping: number[] = new Array(politicians.length);
+  let polCursor = 0;
+  
+  for (let p = 0; p < numParties; p++) {
+    const partySeats = partyAssignments.get(p)!;
+    
+    // Sort party seats: innermost row first, then by angle within each row
+    const sortedPartySeats = partySeats
+      .map(idx => ({ idx, ...seatsWithMeta.find(s => s.idx === idx)! }))
+      .sort((a, b) => {
+        if (a.row !== b.row) return a.row - b.row;
+        return b.angle - a.angle;
+      });
+    
+    for (const seat of sortedPartySeats) {
+      if (polCursor < politicians.length) {
+        mapping[polCursor] = seat.idx;
+        polCursor++;
+      }
+    }
+  }
+  
+  return mapping;
 }
 
 // =============================================================================

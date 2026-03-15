@@ -360,11 +360,11 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
 
           {/* Vote history header */}
           <div className="border border-border overflow-hidden">
-            <div className="grid gap-x-3 px-4 py-2.5 bg-muted text-xs font-mono uppercase tracking-wider text-muted-foreground" style={{ gridTemplateColumns: "20px 1fr 100px 80px" }}>
+            <div className="grid gap-x-3 px-4 py-2 bg-muted text-xs font-mono uppercase tracking-wider text-muted-foreground" style={{ gridTemplateColumns: "20px 1fr 90px 90px" }}>
               <span />
               <span>{"Z\u00e1kon"}</span>
               <span className="text-center">Datum</span>
-              <span className="text-right">{"Pr\u016fm. zm\u011bna"}</span>
+              <span className="text-right whitespace-nowrap">{"Pr\u016fm. zm\u011bna"}</span>
             </div>
             {visiblePartyVotes.map((vote, i) => {
               const isExpanded = expandedLawIndex === i;
@@ -375,7 +375,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                     type="button"
                     onClick={() => setExpandedLawIndex(isExpanded ? null : i)}
                     className="w-full grid gap-x-3 px-4 py-2.5 border-t border-border text-sm items-center hover:bg-muted/30 transition-colors"
-                    style={{ gridTemplateColumns: "20px 1fr 100px 80px" }}
+                    style={{ gridTemplateColumns: "20px 1fr 90px 90px" }}
                   >
                     <svg
                       width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -395,16 +395,16 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                     style={{ maxHeight: isExpanded ? `${vote.memberVotes.length * 44 + 16}px` : "0px", opacity: isExpanded ? 1 : 0 }}
                   >
                     <div className="bg-secondary/30 border-t border-border">
-                      {vote.memberVotes.map((mv, mi) => {
+                      {[...vote.memberVotes].sort((a, b) => a.name.localeCompare(b.name, "cs")).map((mv, mi) => {
                         const mvCol = mv.scoreChange >= 0 ? "#22c55e" : "#ef4444";
                         return (
-                          <div key={mi} className="flex items-center gap-3 px-6 py-2 border-b border-border last:border-b-0">
+                          <div key={mi} className="grid items-center gap-3 px-6 py-2 border-b border-border last:border-b-0" style={{ gridTemplateColumns: "24px 1fr 60px 50px" }}>
                             <div className="w-6 h-6 rounded-full overflow-hidden bg-secondary flex-shrink-0">
                               <img src={mv.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
                             </div>
-                            <span className="flex-1 text-xs text-foreground truncate">{mv.name}</span>
-                            <span className="text-xs font-mono font-bold uppercase" style={{ color: voteColor(mv.voted) }}>{voteLabel(mv.voted)}</span>
-                            <span className="text-xs font-mono font-bold w-12 text-right" style={{ color: mvCol }}>
+                            <span className="text-xs text-foreground truncate">{mv.name}</span>
+                            <span className="text-xs font-mono font-bold uppercase text-center" style={{ color: voteColor(mv.voted) }}>{voteLabel(mv.voted)}</span>
+                            <span className="text-xs font-mono font-bold text-right" style={{ color: mvCol }}>
                               {mv.scoreChange >= 0 ? "+" : ""}{mv.scoreChange}
                             </span>
                           </div>

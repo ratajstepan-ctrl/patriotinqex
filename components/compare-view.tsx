@@ -144,6 +144,9 @@ function CompareCard({ item, politicians, color }: { item: CompareItem; politici
         </div>
         <div className="flex flex-col items-center p-3 border border-border bg-background flex-1">
           <span className="text-xs font-mono uppercase text-muted-foreground">{"Zm\u011bna"}</span>
+          <span className="text-lg font-bold font-mono" style={{ color: changeCol }}>
+            {change >= 0 ? "+" : ""}{change}
+          </span>
         </div>
       </div>
 
@@ -229,7 +232,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
             <div className="w-8 h-px bg-primary" />
             <span className="text-xs font-mono uppercase tracking-[0.3em] text-primary">{"Porovn\u00e1n\u00ed"}</span>
           </div>
-          <button type="button" onClick={onClose} className="text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
+          <button type="button" onClick={onClose} className="text-xs font-mono uppercase tracking-wider text-[#CF4444] border-2 border-[#CF4444] hover:bg-[#CF4444] hover:text-white transition-colors flex items-center gap-2 px-3 py-1.5">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
             {"Zav\u0159\u00edt porovn\u00e1n\u00ed"}
           </button>
@@ -237,7 +240,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
 
         <div className="flex border border-border bg-background overflow-hidden">
           {/* Left side */}
-          <CompareCard item={leftItem} politicians={politicians} color="#ef4444" />
+          <CompareCard item={leftItem} politicians={politicians} color="#CF4444" />
 
           {/* Center wedge */}
           {rightItem ? (
