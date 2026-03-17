@@ -43,18 +43,46 @@ export interface Party {
   founded: number;
 }
 
-// Helper: compute age from birth date string "DD.MM.YYYY"
-export function getAge(birthDate: string): number {
-  const parts = birthDate.split(".");
-  if (parts.length < 3) return 0;
-  const d = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10) - 1;
-  const y = parseInt(parts[2], 10);
-  const born = new Date(y, m, d);
+
+// Helper: compute age from birth date (podporuje YYYY, DD.MM.YYYY, YYYY-MM-DD)
+export function getAge(birthDate: string | number | undefined): number {
+  if (!birthDate) return 0;
+
+  const str = String(birthDate).trim().replace(/\u200b/g, "");
+
+  let birth: Date;
+
+  if (/^\d{4}$/.test(str)) {
+    // Pouze rok (nejčastější případ z API)
+    birth = new Date(parseInt(str, 10), 0, 1);
+  } else if (str.includes(".")) {
+    // DD.MM.YYYY
+    const parts = str.split(".");
+    if (parts.length >= 3) {
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const y = parseInt(parts[2], 10);
+      birth = new Date(y, m, d);
+    } else {
+      return 0;
+    }
+  } else {
+    // YYYY-MM-DD nebo cokoli jiného
+    birth = new Date(str);
+  }
+
+  if (isNaN(birth.getTime())) return 0;
+
+  // === CHYBĚJÍCÍ ČÁST – výpočet věku ===
   const now = new Date();
-  let age = now.getFullYear() - born.getFullYear();
-  if (now.getMonth() < m || (now.getMonth() === m && now.getDate() < d)) age--;
-  return age;
+  let age = now.getFullYear() - birth.getFullYear();
+
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return Math.max(0, age);
 }
 
 // Order determines wedge placement: left-to-right in the semicircle
@@ -122,7 +150,6 @@ export const LAW_NAMES = [
 const VOTE_OPTIONS: VoteRecord["voted"][] = ["pro", "proti", "zdrzel", "nehlasoval"];
 
 // MMR-style scoring: no cap, starts around 1000-1500, can go negative
-
 function generateVoteHistory(rng: () => number, startScore: number): VoteRecord[] {
   const history: VoteRecord[] = [];
 
@@ -145,13 +172,7 @@ function generateVoteHistory(rng: () => number, startScore: number): VoteRecord[
   return history;
 }
 
-// Module-level cache: generatePoliticians output is deterministic (seeded RNG),
-// so we can compute it once and reuse across all component mounts.
-let _cachedPoliticians: Politician[] | null = null;
-
 export function generatePoliticians(): Politician[] {
-  if (_cachedPoliticians) return _cachedPoliticians;
-
   const rng = seededRandom(42);
   const politicians: Politician[] = [];
 
@@ -193,11 +214,8 @@ export function generatePoliticians(): Politician[] {
       id++;
     }
   }
-  _cachedPoliticians = politicians;
   return politicians;
 }
-
-
 
 /**
  * EU Parliament hemicycle - clean, symmetrical layout.
@@ -365,206 +383,3 @@ export function createPartyWedgeMapping(
   return mapping;
 }
 
-// =============================================================================
-// LIVE API loader - https://api.patriotindex.cz/politicians
-// =============================================================================
-
-interface ApiPolitician {
-  id: number;
-  name: string;
-  party: string;
-  birth_date: string;
-  preferencial_votes: number;
-  committee: string | null;
-  image_url: string | null;
-}
-
-// Map API party names to our internal short names
-const API_PARTY_MAP: Record<string, string> = {
-  "ANO 2011": "ANO",
-  "ANO": "ANO",
-  "Ob\u010dansk\u00e1 demokratick\u00e1 strana": "ODS",
-  "ODS": "ODS",
-  "\u010cesk\u00e1 pir\u00e1tsk\u00e1 strana": "Pirati",
-  "Pir\u00e1ti": "Pirati",
-  "K\u0159es\u0165ansk\u00e1 a demokratick\u00e1 unie \u2013 \u010ceskoslovensk\u00e1 strana lidov\u00e1": "KDU-CSL",
-  "KDU-\u010cSL": "KDU-CSL",
-  "Svoboda a p\u0159\u00edm\u00e1 demokracie \u2013 Tomio Okamura (SPD)": "SPD",
-  "Svoboda a p\u0159\u00edm\u00e1 demokracie": "SPD",
-  "SPD": "SPD",
-  "TOP 09": "TOP 09",
-  "Starostov\u00e9 a nez\u00e1visl\u00ed": "STAN",
-  "STAN": "STAN",
-  "Motorist\u00e9 sob\u011b": "Motoriste",
-  "Motorist\u00e9": "Motoriste",
-};
-
-function findPartyByApiName(apiPartyName: string): Party | undefined {
-  const shortName = API_PARTY_MAP[apiPartyName];
-  if (shortName) return PARTIES.find(p => p.name === shortName || p.shortName === shortName);
-  // Fuzzy fallback
-  const lower = apiPartyName.toLowerCase();
-  return PARTIES.find(p =>
-    lower.includes(p.name.toLowerCase()) ||
-    lower.includes(p.shortName.toLowerCase())
-  );
-}
-
-// Clean API name: "Babiš Andrej Ing.​" -> "Andrej Babiš"
-function cleanApiName(raw: string): string {
-  // Remove zero-width spaces and trim
-  const cleaned = raw.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
-  // Remove academic titles
-  const withoutTitles = cleaned
-    .replace(/\b(Ing\.|Mgr\.|MUDr\.|JUDr\.|PhDr\.|RNDr\.|Doc\.|Prof\.|prof\.|Bc\.|Ph\.D\.|CSc\.|MBA|MPA|DiS\.|BBA|MSc\.|RSDr\.|PaedDr\.|MVDr\.|ThDr\.|ICDr\.)\s*/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  // API format is "Surname Firstname" -> swap to "Firstname Surname"
-  const parts = withoutTitles.split(' ').filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts.slice(1).join(' ')} ${parts[0]}`;
-  }
-  return withoutTitles;
-}
-
-export async function loadFromApi(): Promise<{
-  politicians: Partial<Politician>[];
-} | null> {
-  try {
-    const res = await fetch('https://api.patriotindex.cz/politicians');
-    if (!res.ok) return null;
-    const data: ApiPolitician[] = await res.json();
-
-    const politicians: Partial<Politician>[] = data.map((apiPol) => {
-      const party = findPartyByApiName(apiPol.party);
-      return {
-        id: apiPol.id,
-        name: cleanApiName(apiPol.name),
-        party: party?.name || apiPol.party,
-        partyColor: party?.color || '#666666',
-        shortParty: party?.shortName || '?',
-        birthDate: apiPol.birth_date || '',
-        imageUrl: apiPol.image_url || `https://api.dicebear.com/9.x/notionists/svg?seed=pol${apiPol.id}&backgroundColor=b6e3f4`,
-        committee: apiPol.committee || undefined,
-      };
-    });
-
-    return { politicians };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Merge API data into locally-generated politicians.
- * Uses real names, birth dates, photos and committees from the API,
- * but keeps generated scores & vote histories (until the API provides them).
- */
-export function mergeApiData(
-  generated: Politician[],
-  apiData: Partial<Politician>[],
-): Politician[] {
-  const merged = [...generated];
-
-  // Group API politicians by party
-  const apiByParty = new Map<string, Partial<Politician>[]>();
-  for (const apiPol of apiData) {
-    const partyName = apiPol.party || '';
-    if (!apiByParty.has(partyName)) apiByParty.set(partyName, []);
-    apiByParty.get(partyName)!.push(apiPol);
-  }
-
-  // For each party, replace names/metadata in generated politicians
-  for (const party of PARTIES) {
-    const apiMembers = apiByParty.get(party.name) || [];
-    const genMembers = merged.filter(p => p.party === party.name);
-    for (let i = 0; i < Math.min(apiMembers.length, genMembers.length); i++) {
-      const api = apiMembers[i];
-      if (api.name) genMembers[i].name = api.name;
-      if (api.birthDate) genMembers[i].birthDate = api.birthDate;
-      if (api.imageUrl && api.imageUrl !== genMembers[i].imageUrl) genMembers[i].imageUrl = api.imageUrl;
-      if (api.committee) genMembers[i].committee = api.committee;
-      // Detect gender from Czech surname endings
-      const name = genMembers[i].name;
-      genMembers[i].gender = name.endsWith('ová') || name.endsWith('á') ? 'female' : 'male';
-    }
-  }
-
-  return merged;
-}
-
-// =============================================================================
-// CSV loaders (fallback)
-// =============================================================================
-
-export async function loadFromCSV(): Promise<{
-  politicians: Politician[];
-  parties: Party[];
-} | null> {
-  try {
-    const [politiciansRes, votesRes, partiesRes] = await Promise.all([
-      fetch("/data/politicians.csv"),
-      fetch("/data/votes.csv"),
-      fetch("/data/parties.csv"),
-    ]);
-
-    if (!politiciansRes.ok || !votesRes.ok || !partiesRes.ok) return null;
-
-    const [politiciansText, votesText, partiesText] = await Promise.all([
-      politiciansRes.text(), votesRes.text(), partiesRes.text(),
-    ]);
-
-    const partyRows = partiesText.trim().split("\n").slice(1);
-    const parties: Party[] = partyRows.map((row) => {
-      const cols = parseCSVRow(row);
-      return { name: cols[0], shortName: cols[1], color: cols[2], seats: parseInt(cols[3], 10), founded: parseInt(cols[4], 10) };
-    });
-
-    const voteRows = votesText.trim().split("\n").slice(1);
-    const voteMap = new Map<number, VoteRecord[]>();
-    for (const row of voteRows) {
-      const cols = parseCSVRow(row);
-      const polId = parseInt(cols[0], 10);
-      if (!voteMap.has(polId)) voteMap.set(polId, []);
-      voteMap.get(polId)!.push({ lawName: cols[1], date: cols[2], voted: cols[3] as VoteRecord["voted"], scoreChange: parseInt(cols[4], 10) });
-    }
-
-    const polRows = politiciansText.trim().split("\n").slice(1);
-    const politicians: Politician[] = polRows.map((row) => {
-      const cols = parseCSVRow(row);
-      const id = parseInt(cols[0], 10);
-      const partyName = cols[2];
-      const party = parties.find((p) => p.name === partyName);
-      const votes = voteMap.get(id) || [];
-      let score = 1000;
-      for (const v of votes) score += v.scoreChange;
-      return {
-        id, name: cols[1], party: partyName, partyColor: party?.color || "#666", shortParty: party?.shortName || "?",
-        score, birthDate: cols[3] || "", gender: (cols[6] === "female" ? "female" : "male") as "male" | "female",
-        imageUrl: cols[5] || `https://api.dicebear.com/9.x/notionists/svg?seed=pol${id}&backgroundColor=b6e3f4`,
-        voteHistory: votes,
-        region: cols[7] || undefined,
-      };
-    });
-
-    return { politicians, parties };
-  } catch {
-    return null;
-  }
-}
-
-function parseCSVRow(row: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < row.length; i++) {
-    const char = row[i];
-    if (char === '"') {
-      if (inQuotes && row[i + 1] === '"') { current += '"'; i++; }
-      else inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) { result.push(current.trim()); current = ""; }
-    else current += char;
-  }
-  result.push(current.trim());
-  return result;
-}

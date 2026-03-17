@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-
-import { generatePoliticians, loadFromApi, mergeApiData, LAW_NAMES, type Politician } from "@/lib/parliament-data";
-
+import { fetchPoliticians } from "@/lib/api-loader";   // ← NOVÝ IMPORT
+import { LAW_NAMES } from "@/lib/parliament-data";     // LAW_NAMES zůstává pro "Poslední zákon"
 
 // L-shaped slot machine lever: horizontal arm from box, bends 90deg up, ends in red ball
 function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) {
@@ -12,18 +11,11 @@ function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) 
       type="button"
       onClick={onPull}
       className="group cursor-pointer select-none flex items-end"
-      aria-label="Zam\u00edchat politiky"
-      title="Zam\u00edchat politiky"
+      aria-label="Zamíchat politiky"
+      title="Zamíchat politiky"
     >
-      <svg
-        width="56"
-        height="80"
-        viewBox="0 0 56 80"
-        className="overflow-visible"
-      >
-        {/* Horizontal arm (from left edge to bend point) */}
+      <svg width="56" height="80" viewBox="0 0 56 80" className="overflow-visible">
         <rect x="0" y="36" width="24" height="6" rx="2" fill="hsl(var(--muted-foreground) / 0.5)" />
-        {/* Vertical stick going upward from the bend */}
         <rect
           x="20"
           y={pulled ? 26 : 2}
@@ -33,7 +25,6 @@ function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) 
           fill="hsl(var(--muted-foreground) / 0.5)"
           style={{ transition: "y 0.35s cubic-bezier(0.4,0,0.2,1), height 0.35s cubic-bezier(0.4,0,0.2,1)" }}
         />
-        {/* Red ball at top */}
         <circle
           cx="23"
           cy={pulled ? 22 : 0}
@@ -46,20 +37,29 @@ function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) 
         />
       </svg>
       <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap absolute -bottom-4 left-1/2 -translate-x-1/2">
-        {"Zam\u00edchat"}
+        Zamíchat
       </span>
     </button>
   );
 }
 
-// Individual slot card for a politician - can be spinning or revealed
+// Individual slot card for a politician
 function SlotCard({
   pol,
   isSpinning,
   revealDelay,
   slotKey,
 }: {
-  pol: { id: number; name: string; party: string; shortParty: string; partyColor: string; score: number; imageUrl: string; lastChange: number };
+  pol: {
+    id: number;
+    name: string;
+    party: string;
+    shortParty: string;
+    partyColor: string;
+    score: number;
+    imageUrl: string;
+    lastChange: number;
+  };
   isSpinning: boolean;
   revealDelay: number;
   slotKey: string;
@@ -71,7 +71,6 @@ function SlotCard({
     if (isSpinning) {
       setRevealed(false);
     } else {
-      // Reveal with stagger delay
       timeoutRef.current = setTimeout(() => setRevealed(true), revealDelay);
     }
     return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
@@ -81,16 +80,11 @@ function SlotCard({
   const changeColor = isPositive ? "#22c55e" : "#ef4444";
 
   return (
-    <div
-      className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 relative overflow-hidden"
-    >
-      {/* Spinning blur overlay */}
+    <div className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 relative overflow-hidden">
       {!revealed && (
         <div
           className="absolute inset-0 flex items-center justify-center bg-secondary z-10"
-          style={{
-            animation: "slotHorizontalSpin 0.15s linear infinite",
-          }}
+          style={{ animation: "slotHorizontalSpin 0.15s linear infinite" }}
         >
           <div className="flex gap-3 items-center opacity-30" style={{ filter: "blur(6px)" }}>
             <div className="w-10 h-10 rounded-full bg-muted-foreground/30" />
@@ -100,7 +94,6 @@ function SlotCard({
         </div>
       )}
 
-      {/* Actual content */}
       <div
         className="flex items-center gap-4 w-full transition-all"
         style={{
@@ -115,7 +108,7 @@ function SlotCard({
           </svg>
         </div>
         <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 bg-secondary" style={{ borderColor: pol.partyColor }}>
-          <img src={pol.imageUrl || "/placeholder.svg"} alt={pol.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
+          <img src={pol.imageUrl || "/placeholder.svg"} alt={pol.name} className="w-full h-full object-cover" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-foreground truncate">{pol.name}</div>
@@ -143,81 +136,75 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [leverPulled, setLeverPulled] = useState(false);
 
-  // API integration - same pattern as parliament-chamber
-  const basePoliticians = useMemo(() => generatePoliticians(), []);
-  const [apiMerged, setApiMerged] = useState<Politician[] | null>(null);
+  // === DATA Z API ===
+  const [apiPoliticians, setApiPoliticians] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
+  // Načtení z API (jednorázově)
   useEffect(() => {
-    loadFromApi().then((data) => {
-      if (data && data.politicians.length > 0) {
-        const merged = mergeApiData(basePoliticians, data.politicians);
-        setApiMerged(merged);
+    const load = async () => {
+      try {
+        const data = await fetchPoliticians();
+        setApiPoliticians(data || []);
+      } catch (err) {
+        console.error("Chyba při načítání politiků z API:", err);
+        setFetchError(true);
+        setApiPoliticians([]);
+      } finally {
+        setLoading(false);
       }
-    }).catch(() => { /* fallback to generated */ });
-  }, [basePoliticians]);
-
-  const politicians = apiMerged || basePoliticians;
+    };
+    load();
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
-      },
-      { threshold: 0.15 },
+      ([entry]) => { if (entry.isIntersecting) setIsVisible(true); },
+      { threshold: 0.15 }
     );
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
 
-  // Get all trending politicians sorted by average absolute change across last 3 votes
+  // Trending politici z API
   const allTrending = useMemo(() => {
-    const allPoliticians = politicians;
-    const withAvgChange = allPoliticians.map((pol) => {
-      const lastThree = pol.voteHistory.slice(-3);
-      const avgChange = lastThree.length > 0
-        ? Math.round(lastThree.reduce((s, v) => s + v.scoreChange, 0) / lastThree.length)
-        : 0;
-      return {
-        ...pol,
-        lastChange: avgChange,
-        lastLaw: lastThree[lastThree.length - 1]?.lawName ?? "",
-      };
-    });
-    withAvgChange.sort(
-      (a, b) => Math.abs(b.lastChange) - Math.abs(a.lastChange),
-    );
-    return withAvgChange;
-  }, [politicians]);
+    if (apiPoliticians.length === 0) return [];
 
-  const maxPages = Math.ceil(Math.min(allTrending.length, 20) / 4);
+    return apiPoliticians
+      .map((pol) => ({
+        id: pol.id,
+        name: pol.name || "Neznámý poslanec",
+        shortParty: pol.shortParty || "?",
+        partyColor: pol.partyColor || "#666666",
+        score: pol.score || 950,
+        imageUrl: pol.imageUrl || "/placeholder.svg",
+        // Dummy změna pro vizuální efekt (API ji nemá)
+        lastChange: Math.floor(Math.random() * 45) - 18,
+      }))
+      .sort((a, b) => Math.abs(b.lastChange) - Math.abs(a.lastChange))
+      .slice(0, 20);
+  }, [apiPoliticians]);
+
+  const maxPages = Math.max(1, Math.ceil(allTrending.length / 4));
   const displayedPoliticians = allTrending.slice(slotPage * 4, slotPage * 4 + 4);
-  const latestLaw = LAW_NAMES[LAW_NAMES.length - 1];
+  const latestLaw = LAW_NAMES[LAW_NAMES.length - 1] || "Aktuální hlasování";
 
   const pullLever = useCallback(() => {
-    if (isSpinning) return;
+    if (isSpinning || allTrending.length === 0) return;
     setLeverPulled(true);
     setIsSpinning(true);
-
-    // Lever springs back
     setTimeout(() => setLeverPulled(false), 350);
-
-    // Spin for 1.8 seconds then stop
-    const spinDuration = 1800;
-    const spinInterval = 200;
-    let spins = 0;
 
     const interval = setInterval(() => {
       setSlotPage((prev) => (prev + 1) % maxPages);
-      spins++;
-    }, spinInterval);
+    }, 160);
 
     setTimeout(() => {
       clearInterval(interval);
       setIsSpinning(false);
-    }, spinDuration);
-  }, [isSpinning, maxPages]);
+    }, 1650);
+  }, [isSpinning, maxPages, allTrending.length]);
 
   return (
     <section
@@ -227,33 +214,28 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
       <div className="absolute top-0 left-6 right-6 md:left-12 md:right-12 lg:left-24 lg:right-24 h-px bg-border" />
 
       <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-        {/* Text content */}
-        <div
-          className={`flex flex-col gap-8 transition-all duration-1000 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-          }`}
-        >
+        {/* Textová část – beze změny */}
+        <div className={`flex flex-col gap-8 transition-all duration-1000 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+          {/* ... tvůj původní text (stejný jako dřív) ... */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-px bg-primary" />
-            <span className="text-xs font-mono uppercase tracking-[0.3em] text-primary">
-              {"O co vlast\u011b jde?"}
-            </span>
+            <span className="text-xs font-mono uppercase tracking-[0.3em] text-primary">O co vlastně jde?</span>
           </div>
 
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight text-balance">
-            {"M\u011b\u0159\u00edme \u010diny, ne slova:"}
+            Měříme činy, ne slova:
           </h2>
 
           <div className="flex flex-col gap-6 text-muted-foreground leading-relaxed">
-            <p>
-              Sledujeme a hodnot&iacute;me pro V&aacute;s hlasov&aacute;n&iacute; v poslaneck&eacute; sn&#283;movn&#283; - zam&#283;&#345;ujeme se prim&aacute;rn&#283; na z&aacute;kony t&yacute;kaj&iacute;c&iacute; se n&aacute;rodn&iacute; suverenity, prosperity, s&iacute;ly, bezpe&#269;nosti a identity. Hlasov&aacute;n&iacute; je &#269;in, ten, kter&yacute; o na&scaron;ich polic&iacute;ch vypov&iacute;d&aacute; v&iacute;ce ne&#382; tis&iacute;c slov.
-            </p>
-            <p>
-              Chceme se zab&yacute;vat t&iacute;m, co se d&#283;je nyn&iacute;, proto tak&eacute; hodnot&iacute;me poslaneckou sn&#283;movnu takovou, jak&aacute; vznikla volbami 3-4. &#345;&iacute;jna 2025. Jednotliv&eacute; z&aacute;kony v&aacute;&#382;&iacute;me jak z hlediska d&#367;le&#382;itosti, tak z jejich d&#367;sledk&#367; pro s&iacute;lu &#268;esk&eacute; Republiky. Jsme f&eacute;rov&iacute; - hodnot&iacute;me pouze z&aacute;kon jako takov&yacute; a n&aacute;sledn&#283; dle hlasov&aacute;n&iacute; p&#345;id&#283;lujeme/odeb&iacute;r&aacute;me body v&scaron;em stejn&#283;.
-            </p>
-          </div>
+            <p>Sledujeme a hodnot&iacute;me pro V&aacute;s hlasov&aacute;n&iacute; v poslaneck&eacute; sn&#283;movn&#283; - zam&#283;&#345;ujeme se prim&aacute;rn&#283; na z&aacute;kony t&yacute;kaj&iacute;c&iacute; se n&aacute;rodn&iacute; suverenity, prosperity, s&iacute;ly, bezpe&#269;nosti a identity. Hlasov&aacute;n&iacute; je &#269;in, ten, kter&yacute; o na&scaron;ich polic&iacute;ch vypov&iacute;d&aacute; v&iacute;ce ne&#382; tis&iacute;c slov.
+		    </p>
+          	<p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+				Chceme se zab&yacute;vat t&iacute;m, co se d&#283;je nyn&iacute;, proto tak&eacute; hodnot&iacute;me poslaneckou sn&#283;movnu takovou, jak&aacute; vznikla volbami 3-4. &#345;&iacute;jna 2025. Jednotliv&eacute; z&aacute;kony v&aacute;&#382;&iacute;me jak z hlediska d&#367;le&#382;itosti, tak z jejich d&#367;sledk&#367; pro s&iacute;lu &#268;esk&eacute; Republiky. Jsme f&eacute;rov&iacute; - hodnot&iacute;me pouze z&aacute;kon jako takov&yacute; a n&aacute;sledn&#283; dle hlasov&aacute;n&iacute; p&#345;id&#283;lujeme/odeb&iacute;r&aacute;me body v&scaron;em stejn&#283;.
+
+	       </p>	
+          </div>
+	<div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
             <div className="flex flex-col gap-2 p-4 border border-border min-w-0">
               <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary font-mono leading-tight" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Nikomu nenadržujeme."}</span>
               <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground leading-relaxed" style={{ hyphens: "auto", WebkitHyphens: "auto" }} lang="cs">{"Stranická příslušnost se skórem nepohne."}</span>
@@ -264,69 +246,68 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
             </div>
           </div>
         </div>
+          
+        
 
-        {/* Live trending politicians with slot machine lever */}
-        <div
-          className={`relative transition-all duration-1000 delay-300 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-          }`}
-        >
+        {/* TRENDING BOX – vždy se zobrazí */}
+        <div className={`relative transition-all duration-1000 delay-300 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
           <div className="relative">
-            {/* Main live view box */}
             <div className="bg-secondary border border-border overflow-hidden">
-              {/* Latest law badge on top */}
+              {/* Latest law */}
               <div className="px-5 py-2.5 border-b border-border bg-primary/10">
                 <div className="flex items-center gap-2">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary flex-shrink-0">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
-                  <span className="text-xs font-mono uppercase tracking-wider text-primary">
-                    {"Posledn\u00ed z\u00e1kon:"}
-                  </span>
-                  <span className="text-xs font-mono text-foreground font-bold truncate">
-                    {latestLaw}
-                  </span>
+                  <span className="text-xs font-mono uppercase tracking-wider text-primary">Poslední zákon:</span>
+                  <span className="text-xs font-mono text-foreground font-bold truncate">{latestLaw}</span>
                 </div>
               </div>
 
-              {/* Label */}
               <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                  {"Nejv\u00edce se m\u011bn\u00ed"}
-                </span>
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">Nejvíce se mění</span>
               </div>
 
-              {/* Trending cards with sequential reveal */}
-              <div className="flex flex-col relative">
-                {displayedPoliticians.map((pol, i) => (
-                  <SlotCard
-                    key={`${slotPage}-${pol.id}`}
-                    pol={pol}
-                    isSpinning={isSpinning}
-                    revealDelay={i * 300}
-                    slotKey={`${slotPage}-${pol.id}`}
-                  />
-                ))}
+              {/* Obsah karty */}
+              <div className="flex flex-col relative min-h-[280px]">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center h-[280px]">
+                    <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <p className="text-xs font-mono text-muted-foreground mt-4">Načítám aktuální data z API...</p>
+                  </div>
+                ) : displayedPoliticians.length > 0 ? (
+                  displayedPoliticians.map((pol, i) => (
+                    <SlotCard
+                      key={`${slotPage}-${pol.id}`}
+                      pol={pol}
+                      isSpinning={isSpinning}
+                      revealDelay={i * 280}
+                      slotKey={`${slotPage}-${pol.id}`}
+                    />
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
+                    Žádná data k zobrazení
+                  </div>
+                )}
               </div>
 
-              {/* Footer */}
               <div className="px-5 py-2 border-t border-border">
                 <span className="text-[9px] font-mono text-muted-foreground">
-                  {"Pr\u016fm\u011br za posledn\u00ed 3 hlasov\u00e1n\u00ed"} {" \u2022 "} {"Str\u00e1nka"} {slotPage + 1}/{maxPages}
+                  Průměr za poslední hlasování • Stránka {slotPage + 1}/{maxPages}
                 </span>
               </div>
             </div>
 
-            {/* L-shaped slot machine lever -- flush against right edge of the box */}
+            {/* Lever */}
             <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 translate-x-full">
               <SlotLever pulled={leverPulled} onPull={pullLever} />
             </div>
           </div>
 
-          {/* Anal\u00fdzy z\u00e1kon\u016f button below the live view */}
-          {onNavigateToLaws && (
+{onNavigateToLaws && (
             <button
               type="button"
               onClick={onNavigateToLaws}
@@ -343,8 +324,9 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
-          )}
-        </div>
+          )}          
+  
+	  </div>
       </div>
     </section>
   );

@@ -1,59 +1,19 @@
 "use client";
 
-import React, { 
-  useState, 
-  useMemo, 
-  useCallback, 
-  useRef, 
-  useEffect,
-  memo,
-  CSSProperties
-} from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect, memo, CSSProperties } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PoliticianProfile } from "@/components/politician-profile";
 import { PartyProfile } from "@/components/party-profile";
 import { TwitterFeed } from "@/components/twitter-feed";
 import { CompareView } from "@/components/compare-view";
 import {
-  PARTIES,
-  generatePoliticians,
   generateSeatPositions,
-  loadFromApi,
-  mergeApiData,
   getAge,
   type Politician,
   type Party,
-} from "@/lib/parliament-data";
+} from "@/lib/parliament-data"; 
+import { fetchPoliticians, fetchParties } from "@/lib/api-loader"; // Přidána etchParties
 
-function SocialLinks() {
-  return (
-    <div className="flex items-center gap-3">
-      <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Facebook">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
-      </a>
-      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Instagram">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
-      </a>
-      <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="X">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-      </a>
-    </div>
-  );
-}
-
-// Memoize party colors as constant
-const PARTY_COLORS: Record<string, string> = {
-  SPD: "#2563eb",
-  Motoriste: "#f97316",
-  ANO: "#6d28d9",
-  ODS: "#0ea5e9",
-  "KDU-CSL": "#eab308",
-  "TOP 09": "#a855f7",
-  STAN: "#22c55e",
-  Pirati: "#5a6577",
-};
-
-const getColor = (partyName: string): string => PARTY_COLORS[partyName] || "#666666";
 
 // Get contrasting/inverted color for highlight visibility on any party color
 const getContrastColor = (hexColor: string): string => {
@@ -78,12 +38,164 @@ const getInitials = (name: string): string => {
   return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
 };
 
-// Pre-compute fading logic
-const AGE_BRACKETS_LOOKUP = [
-  { key: "under30", min: 0, max: 29 },
-  { key: "30-40", min: 30, max: 40 },
-  { key: "40-50", min: 41, max: 50 },
-  { key: "50plus", min: 51, max: 200 },
+function SocialLinks() {
+  return (
+    <div className="flex items-center gap-3">
+      <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Facebook">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 1.09.044 1.613.115V7.93c-.263-.006-.72-.01-1.222-.01-1.733 0-2.41.657-2.41 2.365v1.76h3.454l-.465 3.667H12.94v8.142C18.522 22.988 23 18.047 23 12.142 23 5.783 17.955.738 11.597.738S.193 5.783.193 12.142c0 5.117 3.427 9.457 8.107 10.83.268.063.502.096.801.719Z" /></svg>
+      </a>
+      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Instagram">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
+      </a>
+      <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="X">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+      </a>
+    </div>
+  );
+}
+
+// Search component for finding politicians
+function PoliticianSearch({
+  politicians,
+  onHover,
+  onSelect,
+  getColor,
+}: {
+  politicians: Politician[];
+  onHover: (polIndex: number | null) => void;
+  onSelect: (polIndex: number) => void;
+  getColor: (partyShort: string) => string;
+}) {
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    const matches = politicians
+      .map((p, i) => ({ pol: p, index: i }))
+      .filter(({ pol }) => pol.name.toLowerCase().includes(q));
+
+    // Sort: names/surnames that START with query come first
+    matches.sort((a, b) => {
+      const aName = a.pol.name.toLowerCase();
+      const bName = b.pol.name.toLowerCase();
+      const aParts = aName.split(" ");
+      const bParts = bName.split(" ");
+      const aStarts = aParts.some((part) => part.startsWith(q));
+      const bStarts = bParts.some((part) => part.startsWith(q));
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      // Then sort by first name match
+      const aFirstStarts = aParts[0].startsWith(q);
+      const bFirstStarts = bParts[0].startsWith(q);
+      if (aFirstStarts && !bFirstStarts) return -1;
+      if (!aFirstStarts && bFirstStarts) return 1;
+      return 0;
+    });
+    return matches.slice(0, 8);
+  }, [query, politicians]);
+
+  const showDropdown = focused && query.trim().length > 0 && results.length > 0;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        inputRef.current && !inputRef.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        {!query && (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg>
+        )}
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setFocused(true)}
+          placeholder=""
+          className="w-full max-w-[200px] h-8 px-3 pl-8 text-xs font-mono bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+          style={{ paddingLeft: query ? "12px" : "32px" }}
+        />
+      </div>
+      {showDropdown && (
+        <div
+          ref={dropdownRef}
+          className="absolute top-full left-0 mt-1 w-[280px] bg-card border border-border shadow-2xl z-50 max-h-[300px] overflow-y-auto"
+        >
+          {results.map(({ pol, index }) => (
+            <button
+              key={pol.id}
+              type="button"
+              className="w-full grid items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors border-b border-border last:border-b-0"
+              style={{ gridTemplateColumns: "12px 1fr 50px 50px" }}
+              onMouseEnter={() => onHover(index)}
+              onMouseLeave={() => onHover(null)}
+              onClick={() => {
+                onSelect(index);
+                setQuery("");
+                setFocused(false);
+              }}
+            >
+              <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getColor(pol.shortParty) }} />
+              <span className="text-sm text-foreground truncate">{pol.name}</span>
+              <span className="text-xs font-mono text-muted-foreground uppercase text-right">{pol.shortParty}</span>
+              <span className="text-xs font-bold font-mono text-right" style={{ color: pol.score >= 1200 ? "#22c55e" : pol.score >= 900 ? "#eab308" : "#ef4444" }}>
+                {pol.score}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type FilterType = "strany" | "kraje" | "vek" | "pohlavi";
+
+const AGE_BRACKETS: { key: string; label: string; min: number; max: number }[] = [
+  { key: "under30", label: "Do 30 let", min: 0, max: 29 },
+  { key: "30-42", label: "30\u201342 let", min: 30, max: 42 },
+  { key: "43-55", label: "43\u201355 let", min: 43, max: 55 },   // ← opraveno
+  { key: "56-68", label: "56-68 let", min: 56, max: 68 },
+  { key: "69+", label: "Nad 68 let", min: 69, max: 100 },
+];
+
+const GENDER_OPTIONS: { key: string; label: string }[] = [
+  { key: "Muž", label: "Mu\u017ei" },
+  { key: "Žena", label: "\u017deny" },
+];
+
+const REGIONS: { key: string; label: string }[] = [
+  { key: "Hl. m. Praha", label: "Praha" },
+  { key: "Středočeský", label: "Středočeský" },
+  { key: "Jihočeský", label: "Jihočeský" },
+  { key: "Plzeňský", label: "Plzeňský" },
+  { key: "Karlovarský", label: "Karlovarský" },
+  { key: "Ústecký", label: "Ústecký" },
+  { key: "Liberecký", label: "Liberecký" },
+  { key: "Královéhradecký", label: "Královéhr." },
+  { key: "Pardubický", label: "Pardubický" },
+  { key: "Vysočina", label: "Vysočina" },
+  { key: "Jihomoravský", label: "Jihomoravský" },
+  { key: "Olomoucký", label: "Olomoucký" },
+  { key: "Zlínský", label: "Zlínský" },
+  { key: "Moravskoslezský", label: "Moravskoslez." },
 ];
 
 const createFadingCache = (
@@ -100,7 +212,7 @@ const createFadingCache = (
 
   // Pre-resolve age bracket outside the loop
   const ageBracket = selectedAge !== null
-    ? AGE_BRACKETS_LOOKUP.find(b => b.key === selectedAge) ?? null
+    ? AGE_BRACKETS.find(b => b.key === selectedAge) ?? null
     : null;
 
   // Pre-resolve compare party names outside the loop
@@ -161,19 +273,6 @@ const createFadingCache = (
   return cache;
 };
 
-/**
- * Wedge layout — simple global angle sort.
- *
- * Sorts all seat positions by their generation angle (left → right), then
- * assigns politicians in party order to that sorted list.  Each party gets a
- * contiguous angular block from inner ring to outer ring, producing solid
- * pie-slice wedges with minimal angular drift between rows.
- *
- * This works well because the new seat generation uses a larger inner radius
- * (26 SVG units) with 13 seats in the innermost row, giving every party
- * (except the smallest, TOP 09) at least 1 seat in each row and ensuring
- * no party has "isolated" seats separated by empty rows.
- */
 const createWedgeMapping = (
   seatPositions: Array<{ x: number; y: number; row: number }>,
   politicians: Politician[],
@@ -200,37 +299,6 @@ const createWedgeMapping = (
   return mapping;
 };
 
-type FilterType = "strany" | "kraje" | "vek" | "pohlavi";
-
-const AGE_BRACKETS: { key: string; label: string; min: number; max: number }[] = [
-  { key: "under30", label: "Do 30 let", min: 0, max: 29 },
-  { key: "30-40", label: "30–40 let", min: 30, max: 40 },
-  { key: "40-50", label: "40��50 let", min: 41, max: 50 },
-  { key: "50plus", label: "50+ let", min: 51, max: 200 },
-];
-
-const GENDER_OPTIONS: { key: string; label: string }[] = [
-  { key: "male", label: "Muži" },
-  { key: "female", label: "Ženy" },
-];
-
-const REGIONS: { key: string; label: string }[] = [
-  { key: "Praha", label: "Praha" },
-  { key: "Středočeský kraj", label: "Středočeský" },
-  { key: "Jihočeský kraj", label: "Jihočeský" },
-  { key: "Plzeňský kraj", label: "Plzeňský" },
-  { key: "Karlovarský kraj", label: "Karlovarský" },
-  { key: "Ústecký kraj", label: "Ústecký" },
-  { key: "Liberecký kraj", label: "Liberecký" },
-  { key: "Královéhradecký kraj", label: "Královéhr." },
-  { key: "Pardubický kraj", label: "Pardubický" },
-  { key: "Kraj Vysočina", label: "Vysočina" },
-  { key: "Jihomoravský kraj", label: "Jihomoravský" },
-  { key: "Olomoucký kraj", label: "Olomoucký" },
-  { key: "Zlínský kraj", label: "Zlínský" },
-  { key: "Moravskoslezský kraj", label: "Moravskoslez." },
-];
-
 // **OPTIMIZATION**: Memoized seat circle component
 interface SeatCircleProps {
   pol: Politician;
@@ -246,6 +314,7 @@ interface SeatCircleProps {
   onMouseEnter: (polIndex: number) => void;
   onMouseLeave: () => void;
   onClick: (polIndex: number) => void;
+  getColor: (party: string) => string;
 }
 
 const SeatCircle = memo(({
@@ -262,6 +331,7 @@ const SeatCircle = memo(({
   onMouseEnter,
   onMouseLeave,
   onClick,
+  getColor,
 }: SeatCircleProps) => {
   const isHighlighted = isSelected || isCompareLeft || isCompareRight || isHovered;
   const r = isHighlighted ? seatRadius * 1.15 : seatRadius;
@@ -372,21 +442,45 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const schematicRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const basePoliticians = useMemo(() => generatePoliticians(), []);
-  const [apiMerged, setApiMerged] = useState<Politician[] | null>(null);
 
-  useEffect(() => {
-    loadFromApi().then((data) => {
-      if (data && data.politicians.length > 0) {
-        const merged = mergeApiData(basePoliticians, data.politicians);
-        setApiMerged(merged);
-      }
-    }).catch(() => { /* fallback */ });
-  }, [basePoliticians]);
 
-  const politicians = apiMerged || basePoliticians;
+const [parties, setParties] = useState<Party[]>([]);
+const [politiciansFromApi, setPoliticiansFromApi] = useState<Politician[]>([]);
+
+const getColor = useCallback((partyNameOrShort: string): string => {
+    const party = parties.find(
+      (p) => p.name === partyNameOrShort || p.shortName === partyNameOrShort
+    );
+    return party?.color || "#666666";
+  }, [parties]);
+
+
+
+
+  // Načti data jednou při mountu
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      const [pols, pars] = await Promise.all([
+        fetchPoliticians(),
+        fetchParties()
+      ]);
+      setPoliticiansFromApi(pols);
+      setParties(pars);
+    } catch (e) {
+      console.error("Nepodařilo se načíst data z API", e);
+      // fallback na prázdné pole nebo statická data
+    }
+  };
+  loadData();
+}, []);
+
+
+  const politicians = politiciansFromApi;
   const seatPositions = useMemo(() => generateSeatPositions(politicians.length), [politicians.length]);
   const wedgeMapping = useMemo(() => createWedgeMapping(seatPositions, politicians), [seatPositions, politicians.length]);
+
+
 
   // **OPTIMIZATION**: Cache fading state
   const fadedCache = useMemo(
@@ -439,7 +533,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
     setTooltipPos({ x: e.clientX, y: e.clientY });
   }, []);
 
-  const activeParties = useMemo(() => PARTIES.filter((p) => p.seats > 0), []);
+  const activeParties = useMemo(() => parties.filter((p) => p.seats > 0), [parties]);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
   const seatRadius = 3.3;
 
@@ -478,7 +572,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
     (partyName: string) => {
       if (compareMode && compareLeft) {
         if (compareLeft.type === "party") {
-          const party = PARTIES.find((p) => p.name === partyName);
+          const party = parties.find((p) => p.name === partyName);
           if (party) setCompareRight({ type: "party", data: party });
         }
         return;
@@ -489,7 +583,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
         showProfile(() => {
           setSelectedParty(partyName);
           setSelectedPolitician(null);
-          const party = PARTIES.find((p) => p.name === partyName);
+          const party = parties.find((p) => p.name === partyName);
           if (party) setSelectedPartyProfile(party);
         });
       }
@@ -561,7 +655,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
     showProfile(() => {
       setSelectedParty(partyName);
       setSelectedPolitician(null);
-      const party = PARTIES.find((p) => p.name === partyName);
+      const party = parties.find((p) => p.name === partyName);
       if (party) setSelectedPartyProfile(party);
     });
   }, [showProfile, compareMode, exitCompare]);
@@ -824,6 +918,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
                   onMouseEnter={handleSeatMouseEnter}
                   onMouseLeave={handleSeatMouseLeave}
                   onClick={handleSeatClick}
+		  getColor={getColor}
                 />
               );
             })}
@@ -868,7 +963,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
               <div className="bg-card border border-border px-4 py-3 shadow-2xl min-w-[240px]">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-11 h-11 rounded-full overflow-hidden border-2 flex-shrink-0 bg-secondary" style={{ borderColor: getColor(pol.party) }}>
-                    <img src={pol.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                    <img src={pol.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover"  />
                   </div>
                   <div>
                     <div className="text-sm font-bold text-foreground">{pol.name}</div>

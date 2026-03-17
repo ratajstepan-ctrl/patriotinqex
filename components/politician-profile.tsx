@@ -10,15 +10,13 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getAge, type Politician } from "@/lib/parliament-data";
+import type { Politician } from "@/lib/parliament-data";
 
 interface PoliticianProfileProps {
   politician: Politician;
   onClose: () => void;
   onGoToParty?: (partyName: string) => void;
   onCompare?: (politician: Politician) => void;
-  onFilterByRegion?: (region: string) => void;
-  onFilterByAge?: (birthDate: string) => void;
 }
 
 const VISIBLE_LAWS = 7;
@@ -56,7 +54,7 @@ function scoreColor(score: number): string {
   return "#ef4444";
 }
 
-export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare, onFilterByRegion, onFilterByAge }: PoliticianProfileProps) {
+export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare }: PoliticianProfileProps) {
   const profileRef = useRef<HTMLDivElement>(null);
   const [chartOffset, setChartOffset] = useState<number | null>(null);
   const [voteOffset, setVoteOffset] = useState<number | null>(null);
@@ -145,7 +143,7 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare,
           <div className="flex flex-col items-center lg:items-start gap-6">
             <div className="relative">
               <div className="w-32 h-32 rounded-full border-2 overflow-hidden bg-secondary" style={{ borderColor: politician.partyColor }}>
-                <img src={politician.imageUrl || "/placeholder.svg"} alt={politician.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                <img src={politician.imageUrl || "/placeholder.svg"} alt={politician.name} className="w-full h-full object-cover" />
               </div>
               <div className="absolute -bottom-2 -right-2 w-14 h-14 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 border-card" style={{ backgroundColor: sc, color: "#fff" }}>
                 {politician.score}
@@ -161,11 +159,10 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare,
                   {politician.party}
                 </button>
                 {politician.region && (
-                  <button type="button" onClick={() => onFilterByRegion?.(politician.region!)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider bg-secondary text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all cursor-pointer">
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider bg-secondary text-muted-foreground">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                     {politician.region}
-                  </button>
+                  </span>
                 )}
               </div>
             </div>
@@ -179,12 +176,10 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare,
             </div>
 
             <div className="grid grid-cols-2 gap-3 w-full">
-              <button type="button" onClick={() => onFilterByAge?.(politician.birthDate)}
-                className="p-3 border border-border bg-background text-left hover:bg-foreground/5 transition-all cursor-pointer">
+              <div className="p-3 border border-border bg-background">
                 <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">{birthLabel}</span>
                 <span className="text-sm font-bold text-foreground font-mono">{politician.birthDate}</span>
-                <span className="text-xs font-mono text-muted-foreground block mt-0.5">({getAge(politician.birthDate)} let)</span>
-              </button>
+              </div>
               {/* Score change box -- smaller */}
               <div className="p-3 border border-border bg-background flex flex-col items-center">
                 <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">{"Zm\u011bna"}</span>
