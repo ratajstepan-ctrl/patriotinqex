@@ -344,6 +344,179 @@ const SeatCircle = memo(({
 });
 SeatCircle.displayName = "SeatCircle";
 
+// Search component for finding politicians by name
+function PoliticianSearch({
+  politicians,
+  onHover,
+  onSelect,
+}: {
+  politicians: Politician[];
+  onHover: (polIndex: number | null) => void;
+  onSelect: (polIndex: number) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Debounce query updates to reduce screen-reader announcement churn
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 150);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const results = useMemo(() => {
+    if (!debouncedQuery.trim()) return [];
+    const q = debouncedQuery.toLowerCase().trim();
+    const matches = politicians
+      .map((p, i) => ({ pol: p, index: i }))
+      .filter(({ pol }) => pol.name.toLowerCase().includes(q));
+
+    matches.sort((a, b) => {
+      const aName = a.pol.name.toLowerCase();
+      const bName = b.pol.name.toLowerCase();
+      const aParts = aName.split(" ");
+      const bParts = bName.split(" ");
+      const aStarts = aParts.some((part) => part.startsWith(q));
+      const bStarts = bParts.some((part) => part.startsWith(q));
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return aName.localeCompare(bName);
+    });
+
+    return matches.slice(0, 8);
+  }, [debouncedQuery, politicians]);
+
+  // Reset active index when results change
+  useEffect(() => { setActiveIdx(-1); }, [results]);
+
+  const showDropdown = focused && debouncedQuery.trim().length > 0;
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        inputRef.current && !inputRef.current.contains(e.target as Node) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(e.target as Node))
+      ) {
+        setFocused(false);
+        onHover(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [onHover]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = Math.min(activeIdx + 1, results.length - 1);
+      setActiveIdx(next);
+      onHover(results[next]?.index ?? null);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prev = Math.max(activeIdx - 1, -1);
+      setActiveIdx(prev);
+      onHover(prev >= 0 ? (results[prev]?.index ?? null) : null);
+    } else if (e.key === "Enter" && activeIdx >= 0 && results[activeIdx]) {
+      e.preventDefault();
+      onSelect(results[activeIdx].index);
+      setQuery("");
+      setFocused(false);
+    } else if (e.key === "Escape") {
+      setFocused(false);
+      onHover(null);
+    }
+  };
+
+  return (
+    <div className="relative flex-shrink-0">
+      <div className="relative flex items-center">
+        <svg
+          className="absolute left-2 text-muted-foreground pointer-events-none"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onKeyDown={handleKeyDown}
+          placeholder="Hledat poslance…"
+          aria-label="Hledat poslance"
+          aria-haspopup="listbox"
+          aria-expanded={showDropdown}
+          aria-activedescendant={activeIdx >= 0 ? `search-opt-${activeIdx}` : undefined}
+          className="h-8 pl-7 pr-3 text-xs font-mono bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/60 focus:border-primary/50 transition-colors w-[180px]"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(""); onHover(null); inputRef.current?.focus(); }}
+            className="absolute right-2 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Vymazat"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {showDropdown && (
+        <div
+          ref={dropdownRef}
+          role="listbox"
+          aria-label="Výsledky hledání"
+          className="absolute top-full left-0 mt-1 min-w-[280px] w-full bg-card border border-border shadow-2xl z-50 max-h-[300px] overflow-y-auto"
+        >
+          {results.length === 0 ? (
+            <div className="px-3 py-2.5 text-xs font-mono text-muted-foreground">Žádný výsledek.</div>
+          ) : (
+            results.map(({ pol, index }, i) => (
+              <button
+                key={pol.id}
+                id={`search-opt-${i}`}
+                type="button"
+                role="option"
+                aria-selected={activeIdx === i}
+                className={`w-full grid items-center gap-2 px-3 py-2.5 text-left transition-colors border-b border-border last:border-b-0 ${activeIdx === i ? "bg-muted/70" : "hover:bg-muted/50"}`}
+                style={{ gridTemplateColumns: "12px 1fr 52px" }}
+                onMouseEnter={() => { setActiveIdx(i); onHover(index); }}
+                onMouseLeave={() => { setActiveIdx(-1); onHover(null); }}
+                onClick={() => {
+                  onSelect(index);
+                  setQuery("");
+                  setFocused(false);
+                }}
+              >
+                <span
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: getColor(pol.shortParty) }}
+                />
+                <span className="text-sm text-foreground truncate">{pol.name}</span>
+                <span className="text-xs font-mono text-muted-foreground uppercase text-right">{pol.shortParty}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ParliamentChamberProps {
   onBack: () => void;
   onGoToLaws?: () => void;
@@ -554,6 +727,12 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
 
   const scrollToFaq = useCallback(() => {
     faqRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  // Search hover: highlight seat and show tooltip above the seat in SVG
+  const handleSearchHover = useCallback((polIndex: number | null) => {
+    setHoveredSeat(polIndex);
+    if (polIndex !== null) setTooltipPos(null);
   }, []);
 
   const handleGoToParty = useCallback((partyName: string) => {
@@ -788,6 +967,11 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
             ? "Vyberte politika nebo stranu pro porovnání."
             : "Klikněte na libovolného poslance, nebo si výše vyberte stranu."}
         </p>
+        <PoliticianSearch
+          politicians={politicians}
+          onHover={handleSearchHover}
+          onSelect={handleSeatClick}
+        />
         <button type="button" onClick={scrollToFaq} className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border">
           FAQ
         </button>
