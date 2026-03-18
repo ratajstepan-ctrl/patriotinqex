@@ -320,7 +320,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
             </div>
 
             {/* L-shaped slot machine lever -- flush against right edge of the box */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 translate-x-full">
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 translate-x-full hidden sm:block">
               <SlotLever pulled={leverPulled} onPull={pullLever} />
             </div>
           </div>

@@ -329,12 +329,11 @@ const SeatCircle = memo(({
           x={seat.x}
           y={seat.y}
           textAnchor="middle"
-          dominantBaseline="central"
+          dy="0.35em"
           fontSize={2.6}
           fontWeight="800"
           fill="#ffffff"
           className="pointer-events-none select-none font-mono"
-          style={{ textShadow: "0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.5)" }}
         >
           {initials}
         </text>
@@ -796,7 +795,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           Zpět
         </button>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono uppercase tracking-[0.3em] text-foreground whitespace-nowrap">
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono uppercase tracking-[0.3em] text-foreground whitespace-nowrap hidden sm:block">
           Poslanecká sněmovna
         </span>
         <div className="flex items-center gap-4 z-10">
