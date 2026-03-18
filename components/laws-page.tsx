@@ -86,7 +86,7 @@ function LawItem({ law, isOpen, onToggle }: { law: LawAnalysis; isOpen: boolean;
         type="button"
         onClick={onToggle}
         className="w-full grid items-center px-5 py-4 text-left hover:bg-muted/30 transition-colors"
-        style={{ gridTemplateColumns: "20px 32px 1fr 140px 100px" }}
+        style={{ gridTemplateColumns: "20px 32px 1fr auto auto" }}
       >
         {/* Expand/collapse indicator */}
         <svg
@@ -265,7 +265,7 @@ export function LawsPage({ onBack }: LawsPageProps) {
       {/* Column headers -- same grid as LawItem */}
       <div
         className="grid items-center px-5 py-2.5 border-b border-border bg-muted/30"
-        style={{ gridTemplateColumns: "20px 32px 1fr 140px 100px" }}
+        style={{ gridTemplateColumns: "20px 32px 1fr auto auto" }}
       >
         <span />
         <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider text-center">#</span>

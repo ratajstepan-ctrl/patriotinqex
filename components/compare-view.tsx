@@ -238,7 +238,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
           </button>
         </div>
 
-        <div className="flex border border-border bg-background overflow-hidden">
+        <div className="flex flex-col sm:flex-row border border-border bg-background overflow-hidden">
           {/* Left side */}
           <CompareCard item={leftItem} politicians={politicians} color="#CF4444" />
 
@@ -246,14 +246,14 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
           {rightItem ? (
             <CompareWedge leftItem={leftItem} rightItem={rightItem} politicians={politicians} />
           ) : (
-            <div className="w-px bg-border" />
+            <div className="w-full sm:w-px h-px sm:h-auto bg-border" />
           )}
 
           {/* Right side */}
           {rightItem ? (
             <CompareCard item={rightItem} politicians={politicians} color="#3b82f6" />
           ) : (
-            <div className="flex-1 flex items-center justify-center p-12">
+            <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
               <div className="text-center">
                 {/* Clickable plus icon that scrolls to schematic */}
                 <button

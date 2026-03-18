@@ -40,7 +40,7 @@ export function Navbar() {
           href="https://www.facebook.com/profile.php?id=61588035370902"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-muted-foreground hover:text-foreground transition-colors duration-300"
+          className="hidden sm:inline-flex text-muted-foreground hover:text-foreground transition-colors duration-300"
           aria-label="Facebook"
         >
           <svg
@@ -57,7 +57,7 @@ export function Navbar() {
           href="https://www.instagram.com/patriotindexcz/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-muted-foreground hover:text-foreground transition-colors duration-300"
+          className="hidden sm:inline-flex text-muted-foreground hover:text-foreground transition-colors duration-300"
           aria-label="Instagram"
         >
           <svg
@@ -80,7 +80,7 @@ export function Navbar() {
           href="https://x.com/patriotindexcz/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-muted-foreground hover:text-foreground transition-colors duration-300"
+          className="hidden sm:inline-flex text-muted-foreground hover:text-foreground transition-colors duration-300"
           aria-label="X (Twitter)"
         >
           <svg

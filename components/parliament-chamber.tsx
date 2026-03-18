@@ -460,7 +460,7 @@ function PoliticianSearch({
           aria-haspopup="listbox"
           aria-expanded={showDropdown}
           aria-activedescendant={activeIdx >= 0 ? `search-opt-${activeIdx}` : undefined}
-          className="h-8 pl-7 pr-3 text-xs font-mono bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/60 focus:border-primary/50 transition-colors w-[180px]"
+          className="h-8 pl-7 pr-3 text-xs font-mono bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/60 focus:border-primary/50 transition-colors w-[140px] sm:w-[180px]"
         />
         {query && (
           <button
@@ -480,7 +480,7 @@ function PoliticianSearch({
           ref={dropdownRef}
           role="listbox"
           aria-label="Výsledky hledání"
-          className="absolute top-full left-0 mt-1 min-w-[280px] w-full bg-card border border-border shadow-2xl z-50 max-h-[300px] overflow-y-auto"
+          className="absolute top-full left-0 mt-1 min-w-full sm:min-w-[280px] bg-card border border-border shadow-2xl z-50 max-h-[300px] overflow-y-auto"
         >
           {results.length === 0 ? (
             <div className="px-3 py-2.5 text-xs font-mono text-muted-foreground">Žádný výsledek.</div>
@@ -800,7 +800,9 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
           Poslanecká sněmovna
         </span>
         <div className="flex items-center gap-4 z-10">
-          <SocialLinks />
+          <div className="hidden sm:flex">
+            <SocialLinks />
+          </div>
           <ThemeToggle />
         </div>
       </header>
@@ -809,7 +811,7 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
       <div className="border-b border-border">
         {/* Main filter selector row */}
         <div className="flex flex-wrap items-center justify-center px-4 py-3 gap-3">
-          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider flex-shrink-0">
+          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider flex-shrink-0 hidden sm:inline">
             Vyberte si filtr:
           </span>
           {(["strany", "kraje", "vek", "pohlavi"] as FilterType[]).map((ft) => {
@@ -960,19 +962,18 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
       </div>
 
       {/* Instruction bar */}
-      <div className="flex flex-wrap items-center justify-center px-4 py-3 border-b border-border gap-3">
-        {/* Search, controls, etc. */}
-        <p className="text-xs font-mono text-muted-foreground text-center pointer-events-none hidden sm:block">
-          {compareMode
-            ? "Vyberte politika nebo stranu pro porovnání."
-            : "Klikněte na libovolného poslance, nebo si výše vyberte stranu."}
-        </p>
+      <div className="flex items-center px-4 py-3 border-b border-border gap-3">
         <PoliticianSearch
           politicians={politicians}
           onHover={handleSearchHover}
           onSelect={handleSeatClick}
         />
-        <button type="button" onClick={scrollToFaq} className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border">
+        <p className="flex-1 text-xs font-mono text-muted-foreground text-center pointer-events-none hidden sm:block">
+          {compareMode
+            ? "Vyberte politika nebo stranu pro porovnání."
+            : "Klikněte na libovolného poslance, nebo si výše vyberte stranu."}
+        </p>
+        <button type="button" onClick={scrollToFaq} className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border">
           FAQ
         </button>
       </div>
