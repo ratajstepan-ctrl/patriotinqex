@@ -8,6 +8,8 @@ import { TwitterFeed } from "@/components/twitter-feed";
 import { CompareView } from "@/components/compare-view";
 import {
   generateSeatPositions,
+  generatePoliticians,
+  PARTIES,
   getAge,
   type Politician,
   type Party,
@@ -287,8 +289,9 @@ const createWedgeMapping = (
     .map((seat, i) => ({
       index: i,
       angle: Math.atan2(centerY - seat.y, centerX - seat.x),
+      row: seat.row,
     }))
-    .sort((a, b) => a.angle - b.angle);
+    .sort((a, b) => a.angle !== b.angle ? a.angle - b.angle : a.row - b.row);
 
   // Assign each politician (already ordered by party) to the next sorted seat.
   // Party 1 gets the leftmost N1 seats, party 2 the next N2, etc.
@@ -469,7 +472,8 @@ useEffect(() => {
       setParties(pars);
     } catch (e) {
       console.error("Nepodařilo se načíst data z API", e);
-      // fallback na prázdné pole nebo statická data
+      setPoliticiansFromApi(generatePoliticians() as Politician[]);
+      setParties(PARTIES);
     }
   };
   loadData();
@@ -535,7 +539,7 @@ useEffect(() => {
 
   const activeParties = useMemo(() => parties.filter((p) => p.seats > 0), [parties]);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
-  const seatRadius = 3.3;
+  const seatRadius = 3.0;
 
   const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
