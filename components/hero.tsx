@@ -163,7 +163,7 @@ export function Hero({ onEnterParliament }: HeroProps) {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
 
       {/* Hero content */}
-      <div className="relative z-10 flex flex-col w-full max-w-5xl items-center gap-8 px-6">
+      <div className="relative z-10 flex flex-col w-full max-w-5xl items-center gap-8 px-2 sm:px-6">
         <div className="relative flex items-center justify-center w-full max-w-5xl min-h-[200px] md:min-h-[280px]">
           <div className="relative w-full max-w-5xl">
 
@@ -197,13 +197,13 @@ export function Hero({ onEnterParliament }: HeroProps) {
         <button
           onClick={onEnterParliament}
           type="button"
-          className="group relative mt-4 px-8 py-4 bg-primary text-primary-foreground font-mono text-sm font-bold uppercase tracking-[0.2em] overflow-hidden transition-all duration-300 hover:tracking-[0.3em] cursor-pointer select-none"
+          className="group relative mt-4 px-4 py-2.5 sm:px-8 sm:py-4 bg-primary text-primary-foreground font-mono text-xs sm:text-sm font-bold uppercase tracking-[0.1em] sm:tracking-[0.2em] overflow-hidden transition-all duration-300 hover:tracking-[0.3em] cursor-pointer select-none"
         >
           <span className="relative z-10 font-bold pointer-events-none">
             {"vzhůru do sněmovny!"}
           </span>
           <div className="absolute inset-0 bg-foreground transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left pointer-events-none" />
-          <span className="absolute inset-0 flex items-center justify-center text-background font-mono text-sm font-bold uppercase tracking-[0.3em] opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100 z-20 pointer-events-none">
+          <span className="absolute inset-0 flex items-center justify-center text-background font-mono text-xs sm:text-sm font-bold uppercase tracking-[0.1em] sm:tracking-[0.3em] opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100 z-20 pointer-events-none">
             {"vzhůru do sněmovny!"}
           </span>
         </button>

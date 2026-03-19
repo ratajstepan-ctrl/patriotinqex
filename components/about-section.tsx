@@ -80,22 +80,22 @@ function SlotCard({
   const changeColor = isPositive ? "#22c55e" : "#ef4444";
 
   return (
-    <div className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 relative overflow-hidden">
+    <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-b border-border last:border-b-0 relative overflow-hidden">
       {!revealed && (
         <div
           className="absolute inset-0 flex items-center justify-center bg-secondary z-10"
           style={{ animation: "slotHorizontalSpin 0.15s linear infinite" }}
         >
           <div className="flex gap-3 items-center opacity-30" style={{ filter: "blur(6px)" }}>
-            <div className="w-10 h-10 rounded-full bg-muted-foreground/30" />
-            <div className="h-3 w-20 bg-muted-foreground/30 rounded" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted-foreground/30" />
+            <div className="h-3 w-16 sm:w-20 bg-muted-foreground/30 rounded" />
             <div className="h-6 w-8 bg-muted-foreground/30 rounded" />
           </div>
         </div>
       )}
 
       <div
-        className="flex items-center gap-4 w-full transition-all"
+        className="flex items-center gap-2 sm:gap-4 w-full transition-all"
         style={{
           opacity: revealed ? 1 : 0,
           transform: revealed ? "translateX(0)" : "translateX(20px)",
@@ -103,20 +103,20 @@ function SlotCard({
         }}
       >
         <div className="flex-shrink-0">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={changeColor} strokeWidth="2.5" style={{ transform: isPositive ? "rotate(0deg)" : "rotate(180deg)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={changeColor} strokeWidth="2.5" style={{ transform: isPositive ? "rotate(0deg)" : "rotate(180deg)" }}>
             <path d="M12 19V5M5 12l7-7 7 7" />
           </svg>
         </div>
-        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 bg-secondary" style={{ borderColor: pol.partyColor }}>
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 border-2 bg-secondary" style={{ borderColor: pol.partyColor }}>
           <img src={pol.imageUrl || "/placeholder.svg"} alt={pol.name} className="w-full h-full object-cover" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-foreground truncate">{pol.name}</div>
-          <div className="text-xs font-mono text-muted-foreground uppercase">{pol.shortParty}</div>
+          <div className="text-xs sm:text-sm font-bold text-foreground truncate">{pol.name}</div>
+          <div className="text-[10px] sm:text-xs font-mono text-muted-foreground uppercase">{pol.shortParty}</div>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-2xl font-bold font-mono text-foreground">{pol.score}</span>
-          <span className="text-lg font-bold font-mono" style={{ color: changeColor }}>
+        <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+          <span className="text-lg sm:text-2xl font-bold font-mono text-foreground">{pol.score}</span>
+          <span className="text-sm sm:text-lg font-bold font-mono" style={{ color: changeColor }}>
             {isPositive ? "+" : ""}{pol.lastChange}
           </span>
         </div>
@@ -294,15 +294,25 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
                 )}
               </div>
 
-              <div className="px-5 py-2 border-t border-border">
+              <div className="px-5 py-2 border-t border-border flex items-center justify-between">
                 <span className="text-[9px] font-mono text-muted-foreground">
                   Průměr za poslední hlasování • Stránka {slotPage + 1}/{maxPages}
                 </span>
+                {/* Mobile shuffle button – visible only on small screens */}
+                <button
+                  type="button"
+                  onClick={pullLever}
+                  disabled={isSpinning || allTrending.length === 0}
+                  className="sm:hidden flex items-center gap-1.5 px-3 py-1 text-[9px] font-mono uppercase tracking-wider border border-primary/60 text-primary disabled:opacity-40 active:bg-primary active:text-primary-foreground transition-colors"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+                  Zamíchat
+                </button>
               </div>
             </div>
 
-            {/* Lever */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 translate-x-full">
+            {/* Lever – hidden on mobile, side-mounted on sm+ */}
+            <div className="hidden sm:block absolute right-0 top-1/2 -translate-y-1/2 z-10 translate-x-full">
               <SlotLever pulled={leverPulled} onPull={pullLever} />
             </div>
           </div>
