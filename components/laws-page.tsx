@@ -177,6 +177,7 @@ export function LawsPage({ onBack }: LawsPageProps) {
   const [loading, setLoading] = useState(true);
   const [openLawId, setOpenLawId] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     fetch("/data/law-analyses.txt")
@@ -214,6 +215,11 @@ export function LawsPage({ onBack }: LawsPageProps) {
     setOpenLawId(openLawId === id ? null : id);
   };
 
+  const handleFilterSelect = (cat: string | null) => {
+    setFilterCategory(cat);
+    setFilterOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -231,7 +237,72 @@ export function LawsPage({ onBack }: LawsPageProps) {
       </header>
 
       {/* Category filter */}
-      <div className="flex justify-center px-4 py-3 border-b border-border">
+      {/* Mobile: collapsible */}
+      <div className="sm:hidden border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setFilterOpen((o) => !o)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-wider bg-secondary text-muted-foreground hover:text-foreground transition-all"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+            {"Filtrovat"}
+            {filterCategory && <span className="ml-1 text-foreground">· {filterCategory}</span>}
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`transition-transform ${filterOpen ? "rotate-180" : ""}`}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {filterCategory && (
+            <button
+              type="button"
+              onClick={() => setFilterCategory(null)}
+              className="text-xs font-mono text-muted-foreground hover:text-foreground underline"
+            >
+              {"Zru\u0161it"}
+            </button>
+          )}
+        </div>
+        {filterOpen && (
+          <div className="flex flex-wrap items-center justify-start gap-2 px-4 pb-3">
+            <button
+              type="button"
+              onClick={() => { handleFilterSelect(null); }}
+              className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-all ${
+                !filterCategory ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {"V\u0161echny"} ({laws.length})
+            </button>
+            {categories.map((cat) => {
+              const catStyle = getCategoryStyle(cat);
+              return (
+                <button
+                  type="button"
+                  key={cat}
+                  onClick={() => handleFilterSelect(filterCategory === cat ? null : cat)}
+                  className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-all border rounded ${
+                    filterCategory === cat
+                      ? `${catStyle.bg} ${catStyle.text} ${catStyle.border}`
+                      : "bg-secondary text-muted-foreground hover:text-foreground border-transparent"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {/* Desktop: always visible */}
+      <div className="hidden sm:flex justify-center px-4 py-3 border-b border-border">
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
