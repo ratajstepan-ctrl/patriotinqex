@@ -279,7 +279,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                     return (
                       <g transform={`translate(${x},${y + 8})`}>
                         {lines.map((line, idx) => (
-                          <text key={idx} x={0} y={idx * 11} textAnchor="middle" className="fill-muted-foreground" fontSize={8} fontFamily="monospace">
+                          <text key={idx} x={0} y={idx * 11} textAnchor="middle" className="fill-muted-foreground" fontSize={8} fontFamily="var(--font-jetbrains), monospace">
                             {line}
                           </text>
                         ))}
@@ -317,7 +317,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                   activeDot={{ r: 6, fill: chartStroke, stroke: "hsl(var(--foreground))", strokeWidth: 2 }}
                   isAnimationActive={false}
                   label={({ x, y, value }: { x: number; y: number; value: number }) => (
-                    <text x={x} y={y - 10} textAnchor="middle" fontSize={9} fontFamily="monospace" className="fill-foreground" fontWeight="bold">
+                    <text x={x} y={y - 10} textAnchor="middle" fontSize={9} fontFamily="var(--font-jetbrains), monospace" className="fill-foreground" fontWeight="bold">
                       {value}
                     </text>
                   )}
