@@ -228,7 +228,7 @@ export function LawsPage({ onBack }: LawsPageProps) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           {"Zp\u011bt"}
         </button>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono uppercase tracking-[0.3em] text-foreground whitespace-nowrap">
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono uppercase tracking-[0.3em] text-foreground whitespace-nowrap hidden sm:block">
           {"Anal\u00fdzy z\u00e1kon\u016f"}
         </span>
         <div className="flex items-center gap-4 z-10">
@@ -274,7 +274,7 @@ export function LawsPage({ onBack }: LawsPageProps) {
           <div className="flex flex-wrap items-center justify-start gap-2 px-4 pb-3">
             <button
               type="button"
-              onClick={() => { handleFilterSelect(null); }}
+              onClick={() => handleFilterSelect(null)}
               className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-all ${
                 !filterCategory ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:text-foreground"
               }`}

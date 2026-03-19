@@ -191,7 +191,7 @@ function CompareWedge({ leftItem, rightItem, politicians }: { leftItem: CompareI
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 px-5 py-8 bg-secondary border-x border-border" style={{ minWidth: "140px" }}>
+    <div className="flex flex-row sm:flex-col items-center justify-center gap-4 px-5 py-4 sm:py-8 bg-secondary border-y sm:border-y-0 sm:border-x border-border sm:min-w-[140px]">
       <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground font-bold">VS</span>
       {metrics.map((m) => {
         const leftWins = m.left > m.right;
@@ -238,7 +238,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
           </button>
         </div>
 
-        <div className="flex border border-border bg-background overflow-hidden">
+        <div className="flex flex-col sm:flex-row border border-border bg-background overflow-hidden">
           {/* Left side */}
           <CompareCard item={leftItem} politicians={politicians} color="#CF4444" />
 
@@ -246,7 +246,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
           {rightItem ? (
             <CompareWedge leftItem={leftItem} rightItem={rightItem} politicians={politicians} />
           ) : (
-            <div className="w-px bg-border" />
+            <div className="h-px sm:h-auto sm:w-px w-full bg-border" />
           )}
 
           {/* Right side */}
