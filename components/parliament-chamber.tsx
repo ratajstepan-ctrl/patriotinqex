@@ -407,7 +407,6 @@ const SeatCircle = memo(({
           fontWeight="800"
           fill="#ffffff"
           className="pointer-events-none select-none font-mono"
-          style={{ textShadow: "0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.5)" }}
         >
           {initials}
         </text>
@@ -892,7 +891,7 @@ useEffect(() => {
       </div>
 
       {/* Chamber SVG */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg overflow-hidden" onMouseMove={handleMouseMove}>
+      <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg overflow-hidden" onMouseMove={handleMouseMove}>
         <div ref={schematicRef} className="w-full max-w-[2200px] mx-auto" style={{ aspectRatio: "1.95 / 1", maxHeight: "100%" }}>
           <svg ref={svgRef} viewBox="-42 2 184 94" className="w-full h-full" aria-label="Rozložení Poslanecké sněmovny">
             {politicians.map((pol, polIndex) => {
