@@ -29,7 +29,7 @@ export function FaqSection() {
           },
           {
             q: "Jak často data aktualizujeme?",
-            a: "Skóre aktualizujeme, jakmile je zákon hlasováním definitivně schválen. Vycházíme z dat dostupných na psp.cz"
+            a: "Skóre aktualizujeme, jakmile je zákon definitivně schválen a zapsán do sbírky zákonů. Vycházíme z dat dostupných na psp.cz"
           },
         ].map((faq, i) => (
           <div key={i} className="mb-6 pb-6 border-b border-border last:border-b-0">
