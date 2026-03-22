@@ -7,8 +7,8 @@ Pro přidání nového zákona zkopírujte šablonu na konci souboru.
 
 === LAW_ID: 1 ===
 NAME: Začínáme!
-DATE: 
-CATEGORY: 
+DATE: 0.0.0
+CATEGORY: InfoPI
 SUMMARY: Patriot index začíná - každý politik má skóre 1000, nyní je jen na nich, na jaké úrovni si jej udrží.
 ANALYSIS:
 
