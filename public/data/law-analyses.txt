@@ -11,6 +11,12 @@ DATE: 0.0.0
 CATEGORY: InfoPI
 SUMMARY: Patriot index začíná - každý politik má skóre 1000, nyní je jen na nich, na jaké úrovni si jej udrží.
 ANALYSIS:
+Začátek Patriot Indexu přináší pro politiky těžký úkol - udržet si dobré skóre. 
+Patriot Index vznikl hned z několika důvodů:
+- Nová vláda a strany, které ji tvoří, se prezentuje jako vláda patriotů - chceme se zkoumat její upřímnost.
+- Moderní internet je plný obrovského množství datového šumu, pro běžného člověka, zmítaného bulvárními nadpisky a výkřiky algoritmů sociálních sítí, je velice náročné zorientovat se ve fungování poslanecké sněmovny. 
+- Patriot Index si klade za cíl, Vám voličům, přinášet informace o tom, zdali vůbec a připadně kdo hají v poslanecké sněmovně patriotické hodnoty.
+- Každý půlrok zveřejníme zprávu, ve které veškerá data zhrneme a obohatíme o další zajímavé statistiky. Zprávy budou přehledné, jednoduché - každý volič by měl mít možnost se lehce nahlédnout na aktiitu těch, kteří se mu mají zodpovídat - politiků.
 
 === LAW_ID: 2 ===
 NAME: Novela zákona o dani z příjmu
