@@ -118,7 +118,7 @@ function CompareCard({ item, politicians, color }: { item: CompareItem; politici
       <div className="flex items-center gap-3">
         {item.type === "politician" ? (
           <div className="w-14 h-14 rounded-full overflow-hidden border-2 bg-secondary flex-shrink-0" style={{ borderColor: (item.data as Politician).partyColor }}>
-            <img src={(item.data as Politician).imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+            <img src={(item.data as Politician).imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
           </div>
         ) : (
           <div className="w-14 h-14 flex items-center justify-center text-lg font-bold font-mono flex-shrink-0" style={{ backgroundColor: (item.data as Party).color, color: "#fff" }}>
@@ -191,7 +191,7 @@ function CompareWedge({ leftItem, rightItem, politicians }: { leftItem: CompareI
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 px-5 py-8 bg-secondary border-x border-border" style={{ minWidth: "140px" }}>
+    <div className="flex flex-row sm:flex-col items-center justify-center gap-4 px-5 py-4 sm:py-8 bg-secondary border-y sm:border-y-0 sm:border-x border-border sm:min-w-[140px]">
       <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground font-bold">VS</span>
       {metrics.map((m) => {
         const leftWins = m.left > m.right;
@@ -238,7 +238,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
           </button>
         </div>
 
-        <div className="flex border border-border bg-background overflow-hidden">
+        <div className="flex flex-col sm:flex-row border border-border bg-background overflow-hidden">
           {/* Left side */}
           <CompareCard item={leftItem} politicians={politicians} color="#CF4444" />
 
@@ -246,7 +246,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
           {rightItem ? (
             <CompareWedge leftItem={leftItem} rightItem={rightItem} politicians={politicians} />
           ) : (
-            <div className="w-px bg-border" />
+            <div className="h-px sm:h-auto sm:w-px w-full bg-border" />
           )}
 
           {/* Right side */}

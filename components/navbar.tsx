@@ -1,26 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+  const handleScroll = useCallback(() => {
+    setScrolled(window.scrollY > 20);
   }, []);
 
-  return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 transition-all duration-500 ${
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
+  const navClassName = useMemo(
+    () =>
+      `fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 transition-all duration-500 ${
         scrolled
           ? "bg-background/90 backdrop-blur-md border-b border-border"
           : "bg-transparent"
-      }`}
+      }`,
+    [scrolled],
+  );
+
+  return (
+    <nav
+      className={navClassName}
     >
       <div className="flex items-center gap-2">
         <span className="text-sm font-mono uppercase tracking-[0.3em] text-foreground">
@@ -30,7 +37,7 @@ export function Navbar() {
 
       <div className="flex items-center gap-4">
         <a
-          href="https://facebook.com"
+          href="https://www.facebook.com/profile.php?id=61588035370902"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors duration-300"
@@ -47,7 +54,7 @@ export function Navbar() {
           </svg>
         </a>
         <a
-          href="https://instagram.com"
+          href="https://www.instagram.com/patriotindexcz/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors duration-300"
@@ -70,7 +77,7 @@ export function Navbar() {
           </svg>
         </a>
         <a
-          href="https://twitter.com"
+          href="https://x.com/patriotindexcz/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground transition-colors duration-300"

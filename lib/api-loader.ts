@@ -9,13 +9,13 @@ export async function fetchPoliticians(): Promise<Politician[]> {
   const partyMapping: Record<string, { short: string; color: string }> = {};
   rawParties.forEach((party: any) => {
     partyMapping[party.name] = {
-      short: party.short_name,
+      short: party.shortName,
       color: party.color
     };
   });
 
   return rawPols.map((p: any, index: number) => {
-    const mapping = partyMapping[p.party] || { short: p.party.slice(0, 4).toUpperCase(), color: "#666666" };
+    const mapping = partyMapping[p.party] || { short: p.party.toUpperCase(), color: "#666666" };
     return {
       id: p.id,
       name: p.name,
@@ -24,7 +24,7 @@ export async function fetchPoliticians(): Promise<Politician[]> {
       imageUrl: p.image_url,
       birthDate: p.birth_date,
       gender: p.gender,
-      region: p.region,
+      region: p.region?.replace(/\u200B/g, "").trim(),
       score: Math.floor(Math.random() * 800) + 700, // dummy
       voteHistory: [], // zatím prázdné
     };
@@ -34,17 +34,17 @@ export async function fetchPoliticians(): Promise<Politician[]> {
 export async function fetchParties(): Promise<Party[]> {
   const res = await fetch('https://api.patriotindex.cz/parties');
   const raw = await res.json();
+
+  // ←←← UPRAVENO: přesně stejné schéma jako tvůj statický PARTIES array
   return raw.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    shortName: p.short_name,
-    leader: p.leader,
-    founded: p.founded,
-    seats: p.seats,
+    name: p.shortName,
     color: p.color,
-    description: p.description || "", // fallback pro null
+    seats: p.seats,
+    shortName: p.shortName,     // z DB short_name → frontend shortName
+    founded: p.founded,
   }));
 }
+
 
 export async function fetchLaws(): Promise<LawAnalysis[]> {
   const res = await fetch('https://api.patriotindex.cz/laws');

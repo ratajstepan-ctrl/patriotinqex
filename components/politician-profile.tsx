@@ -40,7 +40,7 @@ function WrappedTick({ x, y, payload }: { x: number; y: number; payload: { value
   return (
     <g transform={`translate(${x},${y + 8})`}>
       {lines.map((line, idx) => (
-        <text key={idx} x={0} y={idx * 13} textAnchor="middle" className="fill-muted-foreground" fontSize={10} fontFamily="monospace">
+        <text key={idx} x={0} y={idx * 13} textAnchor="middle" className="fill-muted-foreground" fontSize={10} fontFamily="var(--font-jetbrains), monospace">
           {line}
         </text>
       ))}
@@ -112,7 +112,7 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
   };
 
   const sc = scoreColor(politician.score);
-  const birthLabel = politician.gender === "female" ? "Narozená" : "Narozený";
+  const birthLabel = politician.gender === "Žena" ? "Narozená" : "Narozený";
   const voteLabel = (v: string) => { switch (v) { case "pro": return "Pro"; case "proti": return "Proti"; case "zdrzel": return "Zdr\u017eel"; default: return "Nehlas."; } };
   const voteColor = (v: string) => { switch (v) { case "pro": return "#22c55e"; case "proti": return "#ef4444"; default: return "#eab308"; } };
 
@@ -249,7 +249,7 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
                     activeDot={{ r: 6, fill: sc, stroke: "hsl(var(--foreground))", strokeWidth: 2 }}
                     isAnimationActive={false}
                     label={({ x, y, value }: { x: number; y: number; value: number }) => (
-                      <text x={x} y={y - 10} textAnchor="middle" fontSize={9} fontFamily="monospace" className="fill-foreground" fontWeight="bold">
+                      <text x={x} y={y - 10} textAnchor="middle" fontSize={9} fontFamily="var(--font-jetbrains), monospace" className="fill-foreground" fontWeight="bold">
                         {value}
                       </text>
                     )}

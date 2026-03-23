@@ -279,7 +279,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                     return (
                       <g transform={`translate(${x},${y + 8})`}>
                         {lines.map((line, idx) => (
-                          <text key={idx} x={0} y={idx * 11} textAnchor="middle" className="fill-muted-foreground" fontSize={8} fontFamily="monospace">
+                          <text key={idx} x={0} y={idx * 11} textAnchor="middle" className="fill-muted-foreground" fontSize={8} fontFamily="var(--font-jetbrains), monospace">
                             {line}
                           </text>
                         ))}
@@ -317,7 +317,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                   activeDot={{ r: 6, fill: chartStroke, stroke: "hsl(var(--foreground))", strokeWidth: 2 }}
                   isAnimationActive={false}
                   label={({ x, y, value }: { x: number; y: number; value: number }) => (
-                    <text x={x} y={y - 10} textAnchor="middle" fontSize={9} fontFamily="monospace" className="fill-foreground" fontWeight="bold">
+                    <text x={x} y={y - 10} textAnchor="middle" fontSize={9} fontFamily="var(--font-jetbrains), monospace" className="fill-foreground" fontWeight="bold">
                       {value}
                     </text>
                   )}
@@ -400,7 +400,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                         return (
                           <div key={mi} className="flex items-center gap-3 px-6 py-2 border-b border-border last:border-b-0">
                             <div className="w-6 h-6 rounded-full overflow-hidden bg-secondary flex-shrink-0">
-                              <img src={mv.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                              <img src={mv.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
                             </div>
                             <span className="flex-1 text-xs text-foreground truncate">{mv.name}</span>
                             <span className="text-xs font-mono font-bold uppercase" style={{ color: voteColor(mv.voted) }}>{voteLabel(mv.voted)}</span>
@@ -469,7 +469,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                 >
                   <span className="text-xs font-mono text-muted-foreground w-5">{i + 1}.</span>
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-secondary flex-shrink-0">
-                    <img src={member.imageUrl || "/placeholder.svg"} alt={member.name} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                    <img src={member.imageUrl || "/placeholder.svg"} alt={member.name} className="w-full h-full object-cover" />
                   </div>
                   <span className="flex-1 text-sm font-medium text-foreground">{member.name}</span>
                   <span className="text-xs font-bold font-mono" style={{ color: mcCol }}>

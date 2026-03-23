@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect, memo, CSSProperties } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PoliticianProfile } from "@/components/politician-profile";
 import { PartyProfile } from "@/components/party-profile";
@@ -8,13 +8,37 @@ import { TwitterFeed } from "@/components/twitter-feed";
 import { CompareView } from "@/components/compare-view";
 import {
   generateSeatPositions,
+  generatePoliticians,
+  PARTIES,
   getAge,
   type Politician,
   type Party,
-} from "@/lib/parliament-data"; // Odebral PARTIES - nahradíme dynamickými
+} from "@/lib/parliament-data"; 
+import { fetchPoliticians, fetchParties } from "@/lib/api-loader"; // Přidána etchParties
 
-// Přidáno MK, načítá API
-import { fetchPoliticians, fetchParties } from "@/lib/api-loader"; // Přidána fetchParties
+
+// Get contrasting/inverted color for highlight visibility on any party color
+const getContrastColor = (hexColor: string): string => {
+  // Parse hex color
+  const hex = hexColor.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Invert the color
+  const invR = 255 - r;
+  const invG = 255 - g;
+  const invB = 255 - b;
+  
+  // Return inverted color as hex
+  return `#${invR.toString(16).padStart(2, "0")}${invG.toString(16).padStart(2, "0")}${invB.toString(16).padStart(2, "0")}`;
+};
+
+// Extract initials - memoized
+const getInitials = (name: string): string => {
+  const parts = name.split(" ");
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+};
 
 function SocialLinks() {
   return (
@@ -31,33 +55,6 @@ function SocialLinks() {
     </div>
   );
 }
-
-// Odebral PARTY_COLORS - barvy načteme z API
-
-// Get initials: "Lucie Kucerova" -> "LK"
-function getInitials(name: string): string {
-  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-}
-
-// Wedge layout: sort seats by angle, assign politicians in party order
-function createWedgeMapping(
-  seatPositions: Array<{ x: number; y: number; row: number }>,
-  politicians: Politician[],
-): number[] {
-  const centerX = 50;
-  const centerY = 95;
-  const seatsWithAngles = seatPositions.map((seat, i) => ({
-    index: i,
-    angle: Math.atan2(centerY - seat.y, seat.x - centerX),
-  }));
-  seatsWithAngles.sort((a, b) => b.angle - a.angle);
-  const mapping = new Array(seatPositions.length);
-  for (let i = 0; i < seatsWithAngles.length && i < politicians.length; i++) {
-    mapping[i] = seatsWithAngles[i].index;
-  }
-  return mapping;
-}
-
 
 // Search component for finding politicians
 function PoliticianSearch({
@@ -203,6 +200,223 @@ const REGIONS: { key: string; label: string }[] = [
   { key: "Moravskoslezský", label: "Moravskoslez." },
 ];
 
+const createFadingCache = (
+  politicians: Politician[],
+  selectedParty: string | null,
+  selectedRegion: string | null,
+  selectedGender: string | null,
+  selectedAge: string | null,
+  compareMode: boolean,
+  compareLeft: { type: "politician" | "party"; data: Politician | Party } | null,
+  compareRight: { type: "politician" | "party"; data: Politician | Party } | null,
+): boolean[] => {
+  const cache = new Array(politicians.length);
+
+  // Pre-resolve age bracket outside the loop
+  const ageBracket = selectedAge !== null
+    ? AGE_BRACKETS.find(b => b.key === selectedAge) ?? null
+    : null;
+
+  // Pre-resolve compare party names outside the loop
+  const compareLeftParty = compareMode && compareLeft?.type === "party"
+    ? (compareLeft.data as Party).name
+    : null;
+  const compareRightParty = compareMode && compareRight?.type === "party"
+    ? (compareRight.data as Party).name
+    : null;
+  
+  for (let i = 0; i < politicians.length; i++) {
+    const pol = politicians[i];
+    
+    // Compare mode fading
+    if (compareLeftParty !== null) {
+      if (pol.party === compareLeftParty) {
+        cache[i] = false;
+        continue;
+      }
+      if (compareRightParty && pol.party === compareRightParty) {
+        cache[i] = false;
+        continue;
+      }
+      cache[i] = true;
+      continue;
+    }
+    
+    // Party filter
+    if (selectedParty !== null && pol.party !== selectedParty) {
+      cache[i] = true;
+      continue;
+    }
+    
+    // Region filter
+    if (selectedRegion !== null && pol.region !== selectedRegion) {
+      cache[i] = true;
+      continue;
+    }
+    
+    // Gender filter
+    if (selectedGender !== null && pol.gender !== selectedGender) {
+      cache[i] = true;
+      continue;
+    }
+    
+    // Age filter
+    if (ageBracket !== null) {
+      const age = getAge(pol.birthDate);
+      if (age < ageBracket.min || age > ageBracket.max) {
+        cache[i] = true;
+        continue;
+      }
+    }
+    
+    cache[i] = false;
+  }
+  
+  return cache;
+};
+
+const createWedgeMapping = (
+  seatPositions: Array<{ x: number; y: number; row: number }>,
+  politicians: Politician[],
+): number[] => {
+  const centerX = 50;
+  const centerY = 95;
+
+  // Sort all seat positions by angle (ascending = left to right).
+  // The generation formula x = cx - r·cos(α), y = cy - r·sin(α) means the
+  // inverse is α = atan2(cy - y, cx - x), which is monotonically left→right.
+  const sorted = seatPositions
+    .map((seat, i) => ({
+      index: i,
+      angle: Math.atan2(centerY - seat.y, centerX - seat.x),
+      row: seat.row,
+    }))
+    .sort((a, b) => a.angle !== b.angle ? a.angle - b.angle : a.row - b.row);
+
+  // Assign each politician (already ordered by party) to the next sorted seat.
+  // Party 1 gets the leftmost N1 seats, party 2 the next N2, etc.
+  const mapping = new Array<number>(politicians.length);
+  for (let i = 0; i < politicians.length; i++) {
+    mapping[i] = sorted[i].index;
+  }
+  return mapping;
+};
+
+// **OPTIMIZATION**: Memoized seat circle component
+interface SeatCircleProps {
+  pol: Politician;
+  polIndex: number;
+  seat: { x: number; y: number; row: number };
+  seatRadius: number;
+  faded: boolean;
+  isHovered: boolean;
+  isSelected: boolean;
+  isCompareLeft: boolean;
+  isCompareRight: boolean;
+  seatsRevealed: boolean;
+  onMouseEnter: (polIndex: number) => void;
+  onMouseLeave: () => void;
+  onClick: (polIndex: number) => void;
+  getColor: (party: string) => string;
+}
+
+const SeatCircle = memo(({
+  pol,
+  polIndex,
+  seat,
+  seatRadius,
+  faded,
+  isHovered,
+  isSelected,
+  isCompareLeft,
+  isCompareRight,
+  seatsRevealed,
+  onMouseEnter,
+  onMouseLeave,
+  onClick,
+  getColor,
+}: SeatCircleProps) => {
+  const isHighlighted = isSelected || isCompareLeft || isCompareRight || isHovered;
+  const r = isHighlighted ? seatRadius * 1.15 : seatRadius;
+  const color = getColor(pol.party);
+  const contrastColor = getContrastColor(color);
+  const fadedOpacity = faded ? 0.4 : 1;
+  const initials = getInitials(pol.name);
+
+  const handleMouseEnter = useCallback(() => onMouseEnter(polIndex), [onMouseEnter, polIndex]);
+  const handleClick = useCallback(() => onClick(polIndex), [onClick, polIndex]);
+
+  // Determine stroke color - use inverted contrast color when highlighted
+  const strokeColor = isHighlighted
+    ? contrastColor
+    : isHovered
+      ? "hsl(var(--foreground))"
+      : faded
+        ? "hsl(var(--muted-foreground) / 0.4)"
+        : "rgba(255,255,255,0.35)";
+  
+  const strokeWidth = isHighlighted ? 0.7 : isHovered ? 0.4 : 0.25;
+
+  return (
+    <g
+      key={pol.id}
+      className="cursor-pointer"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={handleClick}
+      style={{
+        opacity: seatsRevealed ? fadedOpacity : 0,
+        transition: "opacity 0.5s ease",
+      }}
+    >
+      {!faded && !isHighlighted && (
+        <circle
+          cx={seat.x}
+          cy={seat.y}
+          r={r + 0.4}
+          fill="none"
+          className="stroke-foreground/10 dark:stroke-foreground/5"
+          strokeWidth={0.4}
+        />
+      )}
+      <circle
+        cx={seat.x}
+        cy={seat.y}
+        r={r}
+        fill={faded ? "hsl(var(--muted-foreground) / 0.25)" : color}
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
+      />
+      {!faded && !isHighlighted && (
+        <circle
+          cx={seat.x}
+          cy={seat.y}
+          r={r - 0.35}
+          fill="none"
+          stroke="rgba(255,255,255,0.12)"
+          strokeWidth={0.2}
+        />
+      )}
+      {!faded && (
+        <text
+          x={seat.x}
+          y={seat.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={2.6}
+          fontWeight="800"
+          fill="#ffffff"
+          className="pointer-events-none select-none font-mono"
+          style={{ textShadow: "0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.5)" }}
+        >
+          {initials}
+        </text>
+      )}
+    </g>
+  );
+});
+SeatCircle.displayName = "SeatCircle";
+
 interface ParliamentChamberProps {
   onBack: () => void;
   onGoToLaws?: () => void;
@@ -221,72 +435,87 @@ export function ParliamentChamber({ onBack, onGoToLaws }: ParliamentChamberProps
   const [compareLeft, setCompareLeft] = useState<{ type: "politician" | "party"; data: Politician | Party } | null>(null);
   const [compareRight, setCompareRight] = useState<{ type: "politician" | "party"; data: Politician | Party } | null>(null);
   const [compareFadeIn, setCompareFadeIn] = useState(false);
-  // Multi-filter state
   const [activeFilters, setActiveFilters] = useState<FilterType[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedGender, setSelectedGender] = useState<string | null>(null);
   const [selectedAge, setSelectedAge] = useState<string | null>(null);
+  
   const profileRef = useRef<HTMLDivElement>(null);
   const faqRef = useRef<HTMLDivElement>(null);
   const schematicRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
 
-const [politicians, setPoliticians] = useState<Politician[]>([]);
+
 const [parties, setParties] = useState<Party[]>([]);
-const [isLoading, setIsLoading] = useState(true);
-const [loadingError, setLoadingError] = useState<string | null>(null); // Error handling
+const [politiciansFromApi, setPoliticiansFromApi] = useState<Politician[]>([]);
 
+const getColor = useCallback((partyNameOrShort: string): string => {
+    const party = parties.find(
+      (p) => p.name === partyNameOrShort || p.shortName === partyNameOrShort
+    );
+    return party?.color || "#666666";
+  }, [parties]);
+
+
+
+
+  // Načti data jednou při mountu
 useEffect(() => {
   const loadData = async () => {
     try {
-      const [pols, parts] = await Promise.all([fetchPoliticians(), fetchParties()]);
-
-      // === ČIŠTĚNÍ DAT (odstraní \u200b a mezery) ===
-      const cleanedPols = pols.map((p) => ({
-        ...p,
-        region: (p.region || "").replace(/\u200b/g, "").trim(),
-        gender: (p.gender || "").trim(),
-      }));
-
-      const sortedPols = [...cleanedPols].sort((a, b) => {   // ← non-mutating
-        if (a.shortParty !== b.shortParty) {
-          return a.shortParty.localeCompare(b.shortParty, 'cs');
-        }
-        return a.name.localeCompare(b.name, 'cs');
-      });
-
-      setPoliticians(sortedPols || []);
-      setParties(parts || []);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Chyba při načítání dat:", err);
-      setLoadingError("Nepodařilo se načíst data. Zkuste to později.");
-      setIsLoading(false);
+      const [pols, pars] = await Promise.all([
+        fetchPoliticians(),
+        fetchParties()
+      ]);
+      setPoliticiansFromApi(pols);
+      setParties(pars);
+    } catch (e) {
+      console.error("Nepodařilo se načíst data z API", e);
+      setPoliticiansFromApi(generatePoliticians() as Politician[]);
+      setParties(PARTIES);
     }
   };
   loadData();
 }, []);
 
 
-const getColor = useCallback((partyShort: string) => {
-    const party = parties.find(p => p.shortName === partyShort);
-    return party ? party.color : "#666666";
-  }, [parties]);
+  const politicians = politiciansFromApi;
+  const seatPositions = useMemo(() => generateSeatPositions(politicians.length), [politicians.length]);
+  const wedgeMapping = useMemo(() => createWedgeMapping(seatPositions, politicians), [seatPositions, politicians.length]);
 
-  const seatPositions = useMemo(() => generateSeatPositions(politicians.length), [politicians]);
-  const wedgeMapping = useMemo(() => createWedgeMapping(seatPositions, politicians), [seatPositions, politicians]);
 
-  // Clear tooltip when scrolling -- prevents stuck hover box
+
+  // **OPTIMIZATION**: Cache fading state
+  const fadedCache = useMemo(
+    () => createFadingCache(
+      politicians,
+      selectedParty,
+      selectedRegion,
+      selectedGender,
+      selectedAge,
+      compareMode,
+      compareLeft,
+      compareRight,
+    ),
+    [politicians, selectedParty, selectedRegion, selectedGender, selectedAge, compareMode, compareLeft, compareRight],
+  );
+
+  // Stable scroll handler using ref to avoid re-registering on hoveredSeat changes
+  const hoveredSeatRef = useRef<number | null>(null);
+  hoveredSeatRef.current = hoveredSeat;
+
   useEffect(() => {
     const handleScroll = () => {
-      if (hoveredSeat !== null) {
+      if (hoveredSeatRef.current !== null) {
         setHoveredSeat(null);
         setTooltipPos(null);
       }
     };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [hoveredSeat]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setSeatsRevealed(true), 200);
@@ -299,18 +528,20 @@ const getColor = useCallback((partyShort: string) => {
     return () => clearTimeout(timer);
   }, [selectedParty]);
 
+  // **OPTIMIZATION**: Throttled mouse move handler (16ms = ~60fps)
+  const lastMouseMoveRef = useRef(0);
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const now = Date.now();
+    if (now - lastMouseMoveRef.current < 16) return;
+    lastMouseMoveRef.current = now;
     setTooltipPos({ x: e.clientX, y: e.clientY });
   }, []);
 
-  const activeParties = useMemo(() => parties.filter((p) => p.seats > 0), [parties]); // Dynamické activeParties z API
-
+  const activeParties = useMemo(() => parties.filter((p) => p.seats > 0), [parties]);
   const hasAnySelection = selectedParty !== null || selectedPolitician !== null;
+  const seatRadius = 3.0;
 
-  // Seat radius -- slightly smaller for more breathing room, keep letters same size
-  const seatRadius = 2.9;
-
-    const showProfile = useCallback((cb: () => void) => {
+  const showProfile = useCallback((cb: () => void) => {
     setProfileClosing(false);
     setProfileVisible(false);
     cb();
@@ -342,26 +573,26 @@ const getColor = useCallback((partyShort: string) => {
   }, [hideProfile]);
 
   const handlePartyClick = useCallback(
-    (partyShort: string) => { // Používáme short pro konzistenci
+    (partyName: string) => {
       if (compareMode && compareLeft) {
         if (compareLeft.type === "party") {
-          const party = parties.find((p) => p.shortName === partyShort);
+          const party = parties.find((p) => p.shortName === partyName);
           if (party) setCompareRight({ type: "party", data: party });
         }
         return;
       }
-      if (selectedParty === partyShort && selectedPartyProfile) {
+      if (selectedParty === partyName && selectedPartyProfile) {
         clearAll();
       } else {
         showProfile(() => {
-          setSelectedParty(partyShort);
+          setSelectedParty(partyName);
           setSelectedPolitician(null);
-          const party = parties.find((p) => p.shortName === partyShort);
+          const party = parties.find((p) => p.shortName === partyName);
           if (party) setSelectedPartyProfile(party);
         });
       }
     },
-    [selectedParty, selectedPartyProfile, showProfile, clearAll, compareMode, compareLeft, parties],
+    [selectedParty, selectedPartyProfile, showProfile, clearAll, compareMode, compareLeft],
   );
 
   const handleSeatClick = useCallback(
@@ -375,7 +606,7 @@ const getColor = useCallback((partyShort: string) => {
         return;
       }
       showProfile(() => {
-        setSelectedParty(politician.shortParty); // Používáme shortParty
+        setSelectedParty(politician.party);
         setSelectedPolitician(politician);
         setSelectedPartyProfile(null);
       });
@@ -423,46 +654,30 @@ const getColor = useCallback((partyShort: string) => {
     faqRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  const handleGoToParty = useCallback((partyShort: string) => {
+  const handleGoToParty = useCallback((partyName: string) => {
     if (compareMode) exitCompare();
     showProfile(() => {
-      setSelectedParty(partyShort);
+      setSelectedParty(partyName);
       setSelectedPolitician(null);
-      const party = parties.find((p) => p.shortName === partyShort);
+      const party = parties.find((p) => p.name === partyName);
       if (party) setSelectedPartyProfile(party);
     });
-  }, [showProfile, compareMode, exitCompare, parties]);
+  }, [showProfile, compareMode, exitCompare]);
 
   const showTwitter = selectedPartyProfile && !selectedPolitician;
-
   const compareLeftPolId = compareMode && compareLeft?.type === "politician" ? (compareLeft.data as Politician).id : -1;
   const compareRightPolId = compareMode && compareRight?.type === "politician" ? (compareRight.data as Politician).id : -1;
 
-  const isSeatFaded = useCallback((pol: Politician) => {
-    if (compareMode && compareLeft?.type === "party") {
-      const leftName = (compareLeft.data as Party).shortName; // Používáme short
-      const rightName = compareRight?.type === "party" ? (compareRight.data as Party).shortName : null;
-      if (pol.shortParty === leftName) return false;
-      if (rightName && pol.shortParty === rightName) return false;
-      return true;
-    }
-    if (selectedParty !== null && pol.shortParty !== selectedParty) return true;
-    if (selectedRegion !== null && pol.region !== selectedRegion) return true;
-    if (selectedGender !== null && pol.gender !== selectedGender) return true;
-    if (selectedAge !== null) {
-      const bracket = AGE_BRACKETS.find(b => b.key === selectedAge);
-      if (bracket) {
-        const age = getAge(pol.birthDate);
-        if (age < bracket.min || age > bracket.max) return true;
-      }
-    }
-    return false;
-  }, [selectedParty, selectedRegion, selectedGender, selectedAge, compareMode, compareLeft, compareRight]);
+  // **OPTIMIZATION**: Stable seat event handlers to preserve SeatCircle memo
+  const handleSeatMouseEnter = useCallback((polIndex: number) => {
+    setHoveredSeat(polIndex);
+  }, []);
+  const handleSeatMouseLeave = useCallback(() => {
+    setHoveredSeat(null);
+  }, []);
 
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  const getTooltipStyle = (): React.CSSProperties => {
-    // If no direct mouse position (e.g. hovering from search), compute from seat position
+  // **OPTIMIZATION**: Memoized tooltip style calculation
+  const getTooltipStyle = useCallback((): CSSProperties => {
     let posX = tooltipPos?.x ?? 0;
     let posY = tooltipPos?.y ?? 0;
 
@@ -483,16 +698,14 @@ const getColor = useCallback((partyShort: string) => {
     const tooltipH = 140;
     let x = posX - tooltipW / 2;
     let y = posY - tooltipH - 14;
+    
     if (x < 8) x = 8;
     if (x + tooltipW > window.innerWidth - 8) x = window.innerWidth - tooltipW - 8;
     if (y < 8) y = posY + 16;
     if (y + tooltipH > window.innerHeight - 8) y = window.innerHeight - tooltipH - 8;
+    
     return { position: "fixed" as const, left: x, top: y, zIndex: 9999, pointerEvents: "none" as const };
-  };
-
-  if (loadingError) {
-    return <div className="p-4 text-red-500">{loadingError}</div>; // Error zpráva
-  }
+  }, [tooltipPos, hoveredSeat, wedgeMapping, seatPositions]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -500,9 +713,11 @@ const getColor = useCallback((partyShort: string) => {
       <header className="relative flex items-center justify-between px-6 py-4 border-b border-border">
         <button onClick={onBack} type="button" className="flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors z-10">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-          {"Zp\u011bt"}
+          Zpět
         </button>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono uppercase tracking-[0.3em] text-foreground whitespace-nowrap">{"Poslaneck\u00e1 sn\u011bmovna"}</span>
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono uppercase tracking-[0.3em] text-foreground whitespace-nowrap hidden sm:block">
+          Poslanecká sněmovna
+        </span>
         <div className="flex items-center gap-4 z-10">
           <SocialLinks />
           <ThemeToggle />
@@ -511,14 +726,23 @@ const getColor = useCallback((partyShort: string) => {
 
       {/* Multi-filter system */}
       <div className="border-b border-border">
-        {/* Main filter selector row -- centered */}
+        {/* Main filter selector row */}
         <div className="flex flex-wrap items-center justify-center px-4 py-3 gap-3">
-          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider flex-shrink-0">{"Vyberte si filtr:"}</span>
+          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider flex-shrink-0">
+            Vyberte si filtr:
+          </span>
           {(["strany", "kraje", "vek", "pohlavi"] as FilterType[]).map((ft) => {
-            const labels: Record<FilterType, string> = { strany: "Politick\u00e9 strany", kraje: "Kraje", vek: "V\u011bk", pohlavi: "Pohlav\u00ed" };
+            const labels: Record<FilterType, string> = { 
+              strany: "Politické strany", 
+              kraje: "Kraje", 
+              vek: "Věk", 
+              pohlavi: "Pohlaví" 
+            };
             const isActive = activeFilters.includes(ft);
             return (
-              <button key={ft} type="button"
+              <button 
+                key={ft} 
+                type="button"
                 onClick={() => {
                   if (isActive) {
                     setActiveFilters(activeFilters.filter(f => f !== ft));
@@ -530,33 +754,57 @@ const getColor = useCallback((partyShort: string) => {
                     setActiveFilters([...activeFilters, ft]);
                   }
                 }}
-                className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-all border ${isActive ? "bg-foreground text-background border-foreground" : "bg-secondary text-muted-foreground hover:text-foreground border-border"}`}>
+                className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-all border ${
+                  isActive ? "bg-foreground text-background border-foreground" : "bg-secondary text-muted-foreground"
+                }`}
+              >
                 {labels[ft]}
               </button>
             );
           })}
           {activeFilters.length > 0 && (
-            <button type="button"
-              onClick={() => { setActiveFilters([]); setSelectedParty(null); setSelectedRegion(null); setSelectedAge(null); setSelectedGender(null); }}
-              className="px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border transition-all flex-shrink-0">
-              {"Zru\u0161it filtry"}
+            <button 
+              type="button"
+              onClick={() => { 
+                setActiveFilters([]); 
+                setSelectedParty(null); 
+                setSelectedRegion(null); 
+                setSelectedAge(null); 
+                setSelectedGender(null); 
+              }}
+              className="px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border transition-all flex-shrink-0"
+            >
+              Zrušit filtry
             </button>
           )}
         </div>
 
-        {/* Active filter option rows -- centered with more vertical padding */}
+        {/* Active filter option rows */}
         {activeFilters.map((ft) => (
-          <div key={ft} className="flex flex-wrap items-center justify-center gap-1.5 px-4 py-4 border-t border-border bg-secondary/30" style={{ animation: "fadeIn 0.25s ease" }}>
+          <div 
+            key={ft} 
+            className="flex flex-wrap items-center justify-center gap-1.5 px-4 py-4 border-t border-border bg-secondary/30"
+            style={{ animation: "fadeIn 0.25s ease" }}
+          >
             {ft === "strany" && (
               <>
-                <button type="button" onClick={() => { setSelectedParty(null); clearAll(); }}
-                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedParty ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
-                  {"V\u0161echny"}
+                <button 
+                  type="button" 
+                  onClick={() => { setSelectedParty(null); clearAll(); }}
+                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedParty ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}
+                >
+                  Všechny
                 </button>
                 {activeParties.map((party) => (
-                  <button type="button" key={party.shortName} onClick={() => handlePartyClick(party.shortName)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase tracking-wider transition-all ${selectedParty === party.shortName ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: party.color, border: "1px solid hsl(var(--foreground) / 0.3)" }} />
+                  <button 
+                    type="button" 
+                    key={party.name} 
+                    onClick={() => handlePartyClick(party.name)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase tracking-wider transition-all ${
+                      selectedParty === party.name ? "bg-foreground text-background" : "bg-card text-muted-foreground"
+                    }`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: getColor(party.name), border: "1px solid hsl(var(--foreground) / 0.3)" }} />
                     {party.shortName}
                     <span className="opacity-60">{party.seats}</span>
                   </button>
@@ -565,14 +813,20 @@ const getColor = useCallback((partyShort: string) => {
             )}
             {ft === "kraje" && (
               <>
-                <button type="button" onClick={() => setSelectedRegion(null)}
-                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedRegion ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
-                  {"V\u0161e"}
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedRegion(null)}
+                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedRegion ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
+                >
+                  Vše
                 </button>
                 {REGIONS.map((region) => (
-                  <button type="button" key={region.key}
+                  <button 
+                    type="button" 
+                    key={region.key}
                     onClick={() => setSelectedRegion(selectedRegion === region.key ? null : region.key)}
-                    className={`px-2.5 py-1 text-xs font-mono transition-all ${selectedRegion === region.key ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
+                    className={`px-2.5 py-1 text-xs font-mono transition-all ${selectedRegion === region.key ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
+                  >
                     {region.label}
                   </button>
                 ))}
@@ -580,14 +834,20 @@ const getColor = useCallback((partyShort: string) => {
             )}
             {ft === "vek" && (
               <>
-                <button type="button" onClick={() => setSelectedAge(null)}
-                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedAge ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
-                  {"V\u0161echny v\u011bky"}
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedAge(null)}
+                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedAge ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
+                >
+                  Všechny věky
                 </button>
                 {AGE_BRACKETS.map((bracket) => (
-                  <button type="button" key={bracket.key}
+                  <button 
+                    type="button" 
+                    key={bracket.key}
                     onClick={() => setSelectedAge(selectedAge === bracket.key ? null : bracket.key)}
-                    className={`px-2.5 py-1 text-xs font-mono transition-all ${selectedAge === bracket.key ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
+                    className={`px-2.5 py-1 text-xs font-mono transition-all ${selectedAge === bracket.key ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
+                  >
                     {bracket.label}
                   </button>
                 ))}
@@ -595,14 +855,20 @@ const getColor = useCallback((partyShort: string) => {
             )}
             {ft === "pohlavi" && (
               <>
-                <button type="button" onClick={() => setSelectedGender(null)}
-                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedGender ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
-                  {"V\u0161ichni"}
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedGender(null)}
+                  className={`px-2.5 py-1 text-xs font-mono transition-all ${!selectedGender ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
+                >
+                  Všichni
                 </button>
                 {GENDER_OPTIONS.map((opt) => (
-                  <button type="button" key={opt.key}
+                  <button 
+                    type="button" 
+                    key={opt.key}
                     onClick={() => setSelectedGender(selectedGender === opt.key ? null : opt.key)}
-                    className={`px-2.5 py-1 text-xs font-mono transition-all ${selectedGender === opt.key ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:text-foreground border border-border"}`}>
+                    className={`px-2.5 py-1 text-xs font-mono transition-all ${selectedGender === opt.key ? "bg-foreground text-background" : "bg-card text-muted-foreground"}`}
+                  >
                     {opt.label}
                   </button>
                 ))}
@@ -612,10 +878,10 @@ const getColor = useCallback((partyShort: string) => {
         ))}
       </div>
 
-      {/* Instruction bar with search -- always visible, even in compare mode */}
+      {/* Instruction bar */}
       <div className="flex flex-wrap items-center justify-center px-4 py-3 border-b border-border gap-3">
-        {/* Search field */}
-        <PoliticianSearch
+        {/* Search, controls, etc. */}
+	<PoliticianSearch
           politicians={politicians}
           onHover={(idx) => {
             setHoveredSeat(idx);
@@ -623,130 +889,79 @@ const getColor = useCallback((partyShort: string) => {
           }}
           onSelect={(idx) => handleSeatClick(idx)}
 	  getColor={getColor}
-        />
-        {/* Centered text -- flows naturally to avoid overlap */}
-        <p className="text-xs font-mono text-muted-foreground text-center pointer-events-none hidden sm:block">
+        />	
+
+	<p className="text-xs font-mono text-muted-foreground text-center pointer-events-none hidden sm:block">
           {compareMode
-            ? "Vyberte politika nebo stranu pro porovn\u00e1n\u00ed."
-            : "Klikn\u011bte na libovoln\u00e9ho poslance, nebo si v\u00fd\u0161e vyberte stranu."}
+            ? "Vyberte politika nebo stranu pro porovnání."
+            : "Klikněte na libovolného poslance, nebo si výše vyberte stranu."}
         </p>
-        <button type="button" onClick={scrollToFaq} className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border hover:border-foreground/30 transition-all flex-shrink-0 ml-auto sm:ml-0">
+        <button type="button" onClick={scrollToFaq} className="flex items-center gap-1.5 px-3 py-1 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground border border-border">
           FAQ
         </button>
       </div>
 
+
       {/* Chamber SVG */}
       <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-4 relative parliament-chamber-bg" onMouseMove={handleMouseMove}>
-
-      {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-[520px] gap-4">
-            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-            <p className="text-muted-foreground font-mono text-sm">Načítám poslance z API...</p>
-          </div>
-        ) : (
-
-          <div ref={schematicRef} className="w-full max-w-[1900px] mx-auto" style={{ aspectRatio: "2.1 / 1" }}>
-          <svg ref={svgRef} viewBox="-2 -2 104 100" className="w-full h-full" aria-label="Rozlo\u027een\u00ed Poslaneck\u00e9 sn\u011bmovny">
+        <div ref={schematicRef} className="w-full max-w-[2200px] mx-auto" style={{ aspectRatio: "1.95 / 1" }}>
+          <svg ref={svgRef} viewBox="-42 2 184 94" className="w-full h-full" aria-label="Rozložení Poslanecké sněmovny">
             {politicians.map((pol, polIndex) => {
               const seatIdx = wedgeMapping[polIndex];
               const seat = seatPositions[seatIdx];
               if (!seat) return null;
 
-              const faded = isSeatFaded(pol);
+              const faded = fadedCache[polIndex];
               const isHovered = hoveredSeat === polIndex;
               const isSelected = selectedPolitician?.id === pol.id;
               const isCompareLeft = compareLeftPolId === pol.id;
               const isCompareRight = compareRightPolId === pol.id;
-              const isHighlighted = isSelected || isCompareLeft || isCompareRight || isHovered;
-              const r = isHighlighted ? seatRadius * 1.15 : seatRadius;
-              const color = getColor(pol.shortParty); // Používáme dynamickou barvu
-              const fadedOpacity = faded ? 0.4 : 1;
-              const initials = getInitials(pol.name);
 
               return (
-                <g
+                <SeatCircle
                   key={pol.id}
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoveredSeat(polIndex)}
-                  onMouseLeave={() => setHoveredSeat(null)}
-                  onClick={() => handleSeatClick(polIndex)}
-                  style={{
-                    opacity: seatsRevealed ? fadedOpacity : 0,
-                    transition: "opacity 0.5s ease",
-                  }}
-                >
-                  {(isSelected || isCompareLeft || isCompareRight || isHovered) && (
-                    <circle cx={seat.x} cy={seat.y} r={r + 1} fill="none" stroke="#ef4444" strokeWidth={0.5} />
-                  )}
-                  {/* Outer glow ring for light mode "sharpen" effect */}
-                  {!faded && (
-                    <circle
-                      cx={seat.x}
-                      cy={seat.y}
-                      r={r + 0.4}
-                      fill="none"
-                      className="stroke-foreground/10 dark:stroke-foreground/5"
-                      strokeWidth={0.4}
-                    />
-                  )}
-                  <circle
-                    cx={seat.x}
-                    cy={seat.y}
-                    r={r}
-                    fill={faded ? "hsl(var(--muted-foreground) / 0.25)" : color}
-                    stroke={isHovered ? "hsl(var(--foreground))" : faded ? "hsl(var(--muted-foreground) / 0.4)" : "rgba(255,255,255,0.35)"}
-                    strokeWidth={isHovered ? 0.4 : faded ? 0.25 : 0.25}
-                  />
-                  {/* Inner lighter edge for "sharpen" / contrast effect */}
-                  {!faded && (
-                    <circle
-                      cx={seat.x}
-                      cy={seat.y}
-                      r={r - 0.35}
-                      fill="none"
-                      stroke="rgba(255,255,255,0.12)"
-                      strokeWidth={0.2}
-                    />
-                  )}
-                  {/* Initials text inside the circle - bold white on darker fill */}
-                  {!faded && (
-                    <text
-                      x={seat.x}
-                      y={seat.y}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={2.15}
-                      fontWeight="900"
-                      fontFamily="monospace"
-                      fill="#ffffff"
-                      className="pointer-events-none select-none"
-                      style={{ textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.3)" }}
-                    >
-                      {initials}
-                    </text>
-                  )}
-                </g>
+                  pol={pol}
+                  polIndex={polIndex}
+                  seat={seat}
+                  seatRadius={seatRadius}
+                  faded={faded}
+                  isHovered={isHovered}
+                  isSelected={isSelected}
+                  isCompareLeft={isCompareLeft}
+                  isCompareRight={isCompareRight}
+                  seatsRevealed={seatsRevealed}
+                  onMouseEnter={handleSeatMouseEnter}
+                  onMouseLeave={handleSeatMouseLeave}
+                  onClick={handleSeatClick}
+		  getColor={getColor}
+                />
               );
             })}
           </svg>
         </div>
-    )}
 
-        {/* Selection/compare controls below schematic */}
+        {/* Selection/compare controls */}
         <div className="flex items-center justify-center gap-3 py-3" style={{ minHeight: "44px" }}>
           {hasAnySelection && !compareMode && (
-            <button type="button" onClick={clearAll}
-              className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-primary border border-primary/40 hover:bg-primary hover:text-primary-foreground transition-all bg-transparent">
-              {"Zru\u0161it v\u00fdb\u011br"}
+            <button 
+              type="button" 
+              onClick={clearAll}
+              className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-primary border border-primary/40 hover:bg-primary hover:text-primary-foreground transition-all bg-transparent"
+            >
+              Zrušit výběr
             </button>
           )}
           {compareMode && (
             <div className="flex items-center gap-4">
               <span className="text-xs font-mono uppercase tracking-wider text-primary">
-                {compareRight ? "Porovn\u00e1n\u00ed aktivn\u00ed" : compareLeft?.type === "politician" ? "Klikn\u011bte na politika k porovn\u00e1n\u00ed" : "Klikn\u011bte na stranu k porovn\u00e1n\u00ed"}
+                {compareRight ? "Porovnání aktivní" : compareLeft?.type === "politician" ? "Klikněte na politika k porovnání" : "Klikněte na stranu k porovnání"}
               </span>
-              <button type="button" onClick={exitCompare} className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
-                {"Zru\u0161it porovn\u00e1n\u00ed"}
+              <button 
+                type="button" 
+                onClick={exitCompare} 
+                className="px-4 py-1.5 text-xs font-mono uppercase tracking-wider border border-primary/40 text-primary hover:bg-primary"
+              >
+                Zrušit porovnání
               </button>
             </div>
           )}
@@ -762,19 +977,19 @@ const getColor = useCallback((partyShort: string) => {
             return (
               <div className="bg-card border border-border px-4 py-3 shadow-2xl min-w-[240px]">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-11 h-11 rounded-full overflow-hidden border-2 flex-shrink-0 bg-secondary" style={{ borderColor: getColor(pol.shortParty) }}>
-			<img src={pol.imageUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <div className="w-11 h-11 rounded-full overflow-hidden border-2 flex-shrink-0 bg-secondary" style={{ borderColor: getColor(pol.party) }}>
+                    <img src={pol.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover"  />
                   </div>
                   <div>
                     <div className="text-sm font-bold text-foreground">{pol.name}</div>
                     <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getColor(pol.shortParty) }} />
-                      <span className="text-xs font-mono text-muted-foreground uppercase">{pol.shortParty}</span>
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getColor(pol.party) }} />
+                      <span className="text-xs font-mono text-muted-foreground uppercase">{pol.party}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <span className="text-xs font-mono text-muted-foreground">{"Sk\u00f3re"}</span>
+                  <span className="text-xs font-mono text-muted-foreground">Skóre</span>
                   <span className="text-lg font-bold font-mono" style={{ color: sc }}>{pol.score}</span>
                 </div>
                 {pol.voteHistory.length > 0 && (() => {
@@ -782,7 +997,7 @@ const getColor = useCallback((partyShort: string) => {
                   const chg = last.scoreChange;
                   return (
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs font-mono text-muted-foreground">{"Zm\u011bna"}</span>
+                      <span className="text-xs font-mono text-muted-foreground">Změna</span>
                       <span className="text-sm font-bold font-mono" style={{ color: chg >= 0 ? "#22c55e" : "#ef4444" }}>
                         {chg >= 0 ? "+" : ""}{chg}
                       </span>
@@ -795,7 +1010,7 @@ const getColor = useCallback((partyShort: string) => {
         </div>
       )}
 
-      {/* Profile section with smooth open/close */}
+      {/* Profile section */}
       {(selectedPolitician || selectedPartyProfile || profileClosing) && (
         <div
           ref={profileRef}
@@ -852,9 +1067,10 @@ const getColor = useCallback((partyShort: string) => {
         <div className="max-w-3xl mx-auto">
           <h3 className="text-lg font-bold text-foreground mb-6 text-center font-mono uppercase tracking-wider">FAQ</h3>
           {[
-            { q: "Co je Patriot Index?", a: "Patriot Index je nezávislý hodnotící systém, který sleduje hlasování poslanců Poslanecké sněmovny ČR a přiřazuje jim skóre na základě jejich hlasování o klíčových zákonech." },
-            { q: "Jak se počítá skóre?", a: "Každý poslanec začíná s bázovým MMR skóre. Za každé hlasování se skóre mění podle toho, jak poslanec hlasoval \u2013 za vlastenecké zákony získává body, za protivlastenecké body ztrácí." },
-            { q: "Jak často se data aktualizují?", a: "Data se aktualizují po každém hlasování v Poslanecké sněmovně, obvykle během několika hodin." },
+            { q: "Co je Patriot Index?", a: "Sledujeme a vyhodnocujeme hlasování v Poslanecké sněmovně, protože věříme, že skutečná politika se neodehrává v prohlášeních ani v předvolebních sloganech, ale při hlasování o zákonech. Zaměřujeme se především na zákony, které ovlivňují národní suverenitu, prosperitu, sílu státu, bezpečnost a identitu země. Každý z těchto zákonů hodnotíme podle jeho významu i podle konkrétních důsledků, které může mít pro budoucnost České republiky. Naším cílem je přinášet srozumitelný a férový přehled o tom, jak jednotliví poslanci skutečně hlasují. Nehodnotíme slova ani politické značky – hodnotíme pouze zákony a hlasování. Na základě toho poslancům přidělujeme nebo odečítáme body, a to podle stejných pravidel pro všechny." },
+            { q: "Jak se po\u010d\u00edt\u00e1 sk\u00f3re?", a: "Každý poslanec zvolený 3-4. října 2025 začíná se základní hodnotou 2000 - od té se buď odečítají nebo přičítají body. Pro příklad: zákon XYZ je pro Českou republiku špatný, tudíž každý politik, který pro něj hlasuje, body ztrací. Ti co pro něj nehlasují naopak získávají. Z toho vyplývá: čím vyšší je politikovo skóre, tím lépe." },
+            { q: "Co nepřítomní?", a: "Jsme toho názoru, že politik je do Poslanecké sněmovny volen k tomu, aby reprezentoval své voliče, z toho důvodu považujeme nepřítomnost za prohřešek, chápeme však, že poslance volají někdy i jiné povinnosti v rámci své práce, která jim znemožňuje účast na hlasování. Proto takovým poslancům budeme body ubírat,  velice jemně." },
+		    { q: "Jak často se data aktualizují?", a: "Skóre aktualizujeme, jakmile je zákon definitivně schválen a zapsán do sbírky zákonů. Vycházíme z dat dostupných na psp.cz." },
           ].map((faq, i) => (
             <div key={i} className="mb-6 pb-6 border-b border-border last:border-b-0">
               <h4 className="text-sm font-bold text-foreground mb-2">{faq.q}</h4>
@@ -864,13 +1080,19 @@ const getColor = useCallback((partyShort: string) => {
         </div>
       </div>
 
-      {/* Law analysis navigation -- full-width below FAQ */}
+      {/* Law analysis */}
       {onGoToLaws && (
         <div className="border-t border-border px-6 py-8 bg-background">
-          <button type="button" onClick={onGoToLaws}
-            className="w-full max-w-3xl mx-auto flex items-center justify-center gap-3 px-6 py-4 text-sm font-mono uppercase tracking-widest border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all bg-transparent">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
-            {"Rozbory z\u00e1kon\u016f"}
+          <button 
+            type="button" 
+            onClick={onGoToLaws}
+            className="w-full max-w-3xl mx-auto flex items-center justify-center gap-3 px-6 py-4 text-sm font-mono uppercase tracking-widest border border-primary/40 text-primary hover:bg-primary"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            Rozbory zákonů
           </button>
         </div>
       )}

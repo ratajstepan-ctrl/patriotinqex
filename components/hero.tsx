@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
+
 /**
  * CONFIG
  */
@@ -17,70 +18,100 @@ const GIF_SOURCES = [
   "/images/hero-gifs/animation-7.gif",
 ];
 
-const INITIAL_DELAY = 2000;
-const GIF_DISPLAY_DURATION = 3600;
-const PAUSE_BETWEEN = 3500;
-const FADE_DURATION = 600;
+/** How long to show the static logo before the first animation */
+const INITIAL_DELAY = 5000;
+/** How long each GIF plays (should match or exceed the actual GIF duration) */
+const GIF_PLAY_DURATION = 3600;
+/** Pause on the static logo between animations */
+const PAUSE_BETWEEN = 4000;
 
 /**
- * Sequencer:
- * - Smooth crossfade into GIF
- * - Static fully unmounted during animation
- * - 10ms before end → static instantly returns, GIF disappears
+ * GIF Sequencer — instant swap approach (no crossfade).
+ *
+ * The GIFs have an internal loop count of 1. To "reset" them we must
+ * force the browser to re-fetch a fresh copy each time by appending a
+ * unique query string.
+ *
+ * Flow:
+ *   1. Show static logo for INITIAL_DELAY ms.
+ *   2. Preload next GIF via `new Image()`. Once loaded, swap it in
+ *      instantly (opacity 1, static hidden).
+ *   3. After GIF_PLAY_DURATION ms, swap back to static instantly.
+ *   4. Wait PAUSE_BETWEEN ms, then go to step 2 for the next GIF.
  */
 function useGifSequencer() {
-  const [gifSrc, setGifSrc] = useState<string | null>(null);
-  const [gifOpacity, setGifOpacity] = useState(0);
-  const [staticOpacity, setStaticOpacity] = useState(1);
-  const [staticMounted, setStaticMounted] = useState(true);
-
+  // "active" = the cache-busted src currently showing, or null = show static
+  const [activeSrc, setActiveSrc] = useState<string | null>(null);
   const gifIndexRef = useRef(0);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelRef = useRef(false);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const playNextGif = useCallback(() => {
-    const idx = gifIndexRef.current;
-    const nextGif = `${GIF_SOURCES[idx]}?t=${Date.now()}`;
-
-    // Ensure static exists before crossfade
-    setStaticMounted(true);
-    setStaticOpacity(1);
-
-    // Mount GIF invisible
-    setGifSrc(nextGif);
-    setGifOpacity(0);
-
-    requestAnimationFrame(() => {
-      setStaticOpacity(0);
-      setGifOpacity(1);
-    });
-
-    // After fade completes → remove static completely
-    timeoutRef.current = setTimeout(() => {
-      setStaticMounted(false);
-    }, FADE_DURATION);
-
-    // 10ms before GIF ends → illusion swap
-    timeoutRef.current = setTimeout(() => {
-      setStaticMounted(true);
-      setStaticOpacity(1);
-      setGifOpacity(0);
-
-      gifIndexRef.current = (idx + 1) % GIF_SOURCES.length;
-
-      timeoutRef.current = setTimeout(() => {
-        playNextGif();
-      }, PAUSE_BETWEEN);
-    }, GIF_DISPLAY_DURATION - 10);
+  const addTimer = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+    return id;
   }, []);
 
-  useEffect(() => {
-    timeoutRef.current = setTimeout(playNextGif, INITIAL_DELAY);
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [playNextGif]);
+  const clearTimers = useCallback(() => {
+    for (const t of timersRef.current) clearTimeout(t);
+    timersRef.current = [];
+  }, []);
 
-  return { gifSrc, gifOpacity, staticOpacity, staticMounted };
+  const runSequence = useCallback(() => {
+    if (cancelRef.current) return;
+
+    const idx = gifIndexRef.current;
+    const freshSrc = `${GIF_SOURCES[idx]}?t=${Date.now()}`;
+
+    // Preload the GIF so it starts from frame 0 in the DOM
+    const img = new Image();
+    img.src = freshSrc;
+
+    const onReady = () => {
+      if (cancelRef.current) return;
+      // Instant swap — show the GIF
+      setActiveSrc(freshSrc);
+
+      // After the GIF has played, swap back to static
+      addTimer(() => {
+        if (cancelRef.current) return;
+        setActiveSrc(null);
+
+        // Advance to next GIF
+        gifIndexRef.current = (idx + 1) % GIF_SOURCES.length;
+
+        // Pause, then play next
+        addTimer(() => {
+          runSequence();
+        }, PAUSE_BETWEEN);
+      }, GIF_PLAY_DURATION);
+    };
+
+    // If cached it fires synchronously, otherwise wait for load
+    if (img.complete) {
+      onReady();
+    } else {
+      img.onload = onReady;
+      img.onerror = () => {
+        // Skip broken GIF, try next after pause
+        gifIndexRef.current = (idx + 1) % GIF_SOURCES.length;
+        addTimer(() => runSequence(), PAUSE_BETWEEN);
+      };
+    }
+  }, [addTimer]);
+
+  useEffect(() => {
+    cancelRef.current = false;
+    const id = setTimeout(() => runSequence(), INITIAL_DELAY);
+    timersRef.current.push(id);
+
+    return () => {
+      cancelRef.current = true;
+      clearTimers();
+    };
+  }, [runSequence, clearTimers]);
+
+  return { activeSrc };
 }
 
 interface HeroProps {
@@ -89,14 +120,18 @@ interface HeroProps {
 
 export function Hero({ onEnterParliament }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
-  const { gifSrc, gifOpacity, staticOpacity, staticMounted } =
-    useGifSequencer();
+  const { activeSrc } = useGifSequencer();
+  const lastMouseUpdateRef = useRef(0);
 
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      // Throttle to ~60fps (16ms intervals)
+      if (now - lastMouseUpdateRef.current < 16) return;
+      lastMouseUpdateRef.current = now;
       const rect = el.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
       const y = ((e.clientY - rect.top) / rect.height - 0.5) * 10;
@@ -104,7 +139,7 @@ export function Hero({ onEnterParliament }: HeroProps) {
       el.style.setProperty("--mouse-y", `${y}px`);
     };
 
-    el.addEventListener("mousemove", handleMouseMove);
+    el.addEventListener("mousemove", handleMouseMove, { passive: true });
     return () => el.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
@@ -128,41 +163,29 @@ export function Hero({ onEnterParliament }: HeroProps) {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
 
       {/* Hero content */}
-      <div className="relative z-10 flex flex-col w-full max-w-5xl items-center gap-8 px-6">
+      <div className="relative z-10 flex flex-col w-full max-w-5xl items-center gap-8 px-2 sm:px-6">
         <div className="relative flex items-center justify-center w-full max-w-5xl min-h-[200px] md:min-h-[280px]">
           <div className="relative w-full max-w-5xl">
 
-            {/* STATIC IMAGE */}
-            {staticMounted && (
-              <img
-                src={STATIC_LOGO_SRC}
-                alt="Patriot Index"
-                className="absolute inset-0 w-full h-auto select-none"
-                style={{
-                  opacity: staticOpacity,
-                  transition: `opacity ${FADE_DURATION}ms ease`,
-                }}
-              />
-            )}
-
-            {/* GIF IMAGE */}
-            {gifSrc && (
-              <img
-                src={gifSrc}
-                alt="Patriot Index animation"
-                className="absolute inset-0 w-full h-auto select-none"
-                style={{
-                  opacity: gifOpacity,
-                  transition: `opacity ${FADE_DURATION}ms ease`,
-                }}
-              />
-            )}
+            {/* Show the GIF when active, otherwise the static logo */}
+            <img
+              src={activeSrc ?? STATIC_LOGO_SRC}
+              key={activeSrc ?? "static"}
+              alt="Patriot Index"
+              className="absolute inset-0 w-full h-auto select-none"
+              loading="eager"
+              decoding="async"
+              style={{ willChange: "opacity" }}
+            />
 
             {/* Layout spacer */}
             <img
               src={STATIC_LOGO_SRC}
               alt=""
               className="w-full h-auto opacity-0 pointer-events-none select-none"
+              loading="eager"
+              decoding="async"
+              aria-hidden="true"
             />
           </div>
         </div>
@@ -174,13 +197,13 @@ export function Hero({ onEnterParliament }: HeroProps) {
         <button
           onClick={onEnterParliament}
           type="button"
-          className="group relative mt-4 px-8 py-4 bg-primary text-primary-foreground font-mono text-sm font-bold uppercase tracking-[0.2em] overflow-hidden transition-all duration-300 hover:tracking-[0.3em]"
+          className="group relative mt-4 px-4 py-2.5 sm:px-8 sm:py-4 bg-primary text-primary-foreground font-mono text-xs sm:text-sm font-bold uppercase tracking-[0.1em] sm:tracking-[0.2em] overflow-hidden transition-all duration-300 hover:tracking-[0.3em] cursor-pointer select-none"
         >
-          <span className="relative z-10 font-bold">
+          <span className="relative z-10 font-bold pointer-events-none">
             {"vzhůru do sněmovny!"}
           </span>
-          <div className="absolute inset-0 bg-foreground transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-          <span className="absolute inset-0 flex items-center justify-center text-background font-mono text-sm font-bold uppercase tracking-[0.3em] opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100 z-20">
+          <div className="absolute inset-0 bg-foreground transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left pointer-events-none" />
+          <span className="absolute inset-0 flex items-center justify-center text-background font-mono text-xs sm:text-sm font-bold uppercase tracking-[0.1em] sm:tracking-[0.3em] opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100 z-20 pointer-events-none">
             {"vzhůru do sněmovny!"}
           </span>
         </button>
