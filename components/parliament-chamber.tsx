@@ -10,6 +10,7 @@ import {
   generateSeatPositions,
   generatePoliticians,
   PARTIES,
+  getLatestScoreChange,
   getAge,
   type Politician,
   type Party,
@@ -157,7 +158,7 @@ function PoliticianSearch({
               <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getColor(pol.shortParty) }} />
               <span className="text-sm text-foreground truncate">{pol.name}</span>
               <span className="text-xs font-mono text-muted-foreground uppercase text-right">{pol.shortParty}</span>
-              <span className="text-xs font-bold font-mono text-right" style={{ color: pol.score >= 1200 ? "#22c55e" : pol.score >= 900 ? "#eab308" : "#ef4444" }}>
+              <span className="text-xs font-bold font-mono text-right" style={{ color: pol.score >= 1200 ? "#22c55e" : pol.score >= 900 ? "#eab308" : "#D04544" }}>
                 {pol.score}
               </span>
             </button>
@@ -575,7 +576,7 @@ useEffect(() => {
     (partyName: string) => {
       if (compareMode && compareLeft) {
         if (compareLeft.type === "party") {
-          const party = parties.find((p) => p.shortName === partyName);
+            const party = parties.find((p) => p.shortName === partyName || p.name === partyName);
           if (party) setCompareRight({ type: "party", data: party });
         }
         return;
@@ -586,7 +587,7 @@ useEffect(() => {
         showProfile(() => {
           setSelectedParty(partyName);
           setSelectedPolitician(null);
-          const party = parties.find((p) => p.shortName === partyName);
+          const party = parties.find((p) => p.shortName === partyName || p.name === partyName);
           if (party) setSelectedPartyProfile(party);
         });
       }
@@ -972,7 +973,7 @@ useEffect(() => {
         <div style={getTooltipStyle()}>
           {(() => {
             const pol = politicians[hoveredSeat];
-            const sc = pol.score >= 1200 ? "#22c55e" : pol.score >= 900 ? "#eab308" : "#ef4444";
+            const sc = pol.score >= 1200 ? "#22c55e" : pol.score >= 900 ? "#eab308" : "#D04544";
             return (
               <div className="bg-card border border-border px-4 py-3 shadow-2xl min-w-[240px]">
                 <div className="flex items-center gap-3 mb-2">
@@ -992,12 +993,11 @@ useEffect(() => {
                   <span className="text-lg font-bold font-mono" style={{ color: sc }}>{pol.score}</span>
                 </div>
                 {pol.voteHistory.length > 0 && (() => {
-                  const last = pol.voteHistory[pol.voteHistory.length - 1];
-                  const chg = last.scoreChange;
+                  const chg = getLatestScoreChange(pol.voteHistory);
                   return (
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs font-mono text-muted-foreground">Změna</span>
-                      <span className="text-sm font-bold font-mono" style={{ color: chg >= 0 ? "#22c55e" : "#ef4444" }}>
+                      <span className="text-sm font-bold font-mono" style={{ color: chg >= 0 ? "#22c55e" : "#D04544" }}>
                         {chg >= 0 ? "+" : ""}{chg}
                       </span>
                     </div>
@@ -1082,10 +1082,10 @@ useEffect(() => {
       {/* Law analysis */}
       {onGoToLaws && (
         <div className="border-t border-border px-6 py-8 bg-background">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={onGoToLaws}
-            className="w-full max-w-3xl mx-auto flex items-center justify-center gap-3 px-6 py-4 text-sm font-mono uppercase tracking-widest border border-primary/40 text-primary hover:bg-primary"
+            className="w-full max-w-3xl mx-auto flex items-center justify-center gap-3 px-6 py-4 text-sm font-mono uppercase tracking-[0.15em] font-bold border-2 border-primary/60 text-primary hover:bg-primary hover:text-primary-foreground transition-all bg-transparent group"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />

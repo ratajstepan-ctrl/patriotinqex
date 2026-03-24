@@ -55,7 +55,10 @@ export function PageRouter() {
         setIsAnimating(false);
       }, 600);
 
-      const handleOutEnd = () => {
+      const handleOutEnd = (event: AnimationEvent) => {
+        // Ignore bubbling animation events from child elements.
+        if (event.target !== el || event.animationName !== "pageTurnOut") return;
+
         clearTimeout(fallbackTimeout);
         el.removeEventListener("animationend", handleOutEnd);
         setActivePage(target);
@@ -64,7 +67,9 @@ export function PageRouter() {
         requestAnimationFrame(() => {
           el.style.animation = "pageTurnIn 0.5s ease-out forwards";
 
-          const handleInEnd = () => {
+          const handleInEnd = (inEvent: AnimationEvent) => {
+            if (inEvent.target !== el || inEvent.animationName !== "pageTurnIn") return;
+
             el.removeEventListener("animationend", handleInEnd);
             el.style.animation = "";
             el.style.willChange = "";
@@ -100,13 +105,15 @@ export function PageRouter() {
 
   const handleEnterParliament = useCallback(() => navigateTo("parliament"), [navigateTo]);
   const handleBack = useCallback(() => {
-    // Use browser history.back() so back button and our button behave the same
-    window.history.back();
-  }, []);
+    // Drive in-app back via our own transition to avoid popstate timing races.
+    window.history.replaceState({ page: "landing" }, "", "");
+    navigateTo("landing", false);
+  }, [navigateTo]);
   const handleGoToLaws = useCallback(() => navigateTo("laws"), [navigateTo]);
   const handleBackToParliament = useCallback(() => {
-    window.history.back();
-  }, []);
+    window.history.replaceState({ page: "parliament" }, "", "#parliament");
+    navigateTo("parliament", false);
+  }, [navigateTo]);
 
   return (
     <div ref={containerRef}>

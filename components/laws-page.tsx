@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LAW_NAMES } from "@/lib/parliament-data";
+import { fetchLaws } from "@/lib/api-loader";
 
 interface LawAnalysis {
   id: number;
@@ -31,7 +32,7 @@ const CATEGORY_MAP: Record<string, string> = {
 // Distinct colors for each category
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   "Ekonomika": { bg: "bg-amber-500/15", text: "text-amber-600 dark:text-amber-400", border: "border-amber-500/30" },
-  "Bezpe\u010dnost": { bg: "bg-red-500/15", text: "text-red-600 dark:text-red-400", border: "border-red-500/30" },
+    "Bezpečnost": { bg: "bg-[#D04544]/15", text: "text-[#D04544]", border: "border-[#D04544]/30" },
   "Obrana": { bg: "bg-emerald-500/15", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30" },
   "Energetika": { bg: "bg-blue-500/15", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/30" },
   "Soci\u00e1ln\u00ed politika": { bg: "bg-purple-500/15", text: "text-purple-600 dark:text-purple-400", border: "border-purple-500/30" },
@@ -180,13 +181,31 @@ export function LawsPage({ onBack }: LawsPageProps) {
   const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/data/law-analyses.txt")
-      .then((res) => res.text())
-      .then((text) => {
+    const load = async () => {
+      try {
+        const lawsFromApi = await fetchLaws();
+        if (Array.isArray(lawsFromApi) && lawsFromApi.length > 0) {
+          setLaws(
+            lawsFromApi.map((law) => ({
+              id: law.id,
+              name: law.name,
+              date: law.date,
+              category: normalizeCategory(law.category || ""),
+              summary: law.summary || "",
+              analysis: law.analysis || "",
+            })),
+          );
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fall back to local text parsing below.
+      }
+
+      try {
+        const text = await fetch("/data/law-analyses.txt").then((res) => res.text());
         setLaws(parseLawAnalyses(text));
-        setLoading(false);
-      })
-      .catch(() => {
+      } catch {
         const fallback: LawAnalysis[] = LAW_NAMES.map((name, i) => ({
           id: i + 1,
           name,
@@ -196,8 +215,12 @@ export function LawsPage({ onBack }: LawsPageProps) {
           analysis: "Analýza bude doplněna.",
         }));
         setLaws(fallback);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    void load();
   }, []);
 
   const categories = useMemo(() => {

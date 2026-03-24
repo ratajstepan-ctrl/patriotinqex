@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { fetchPoliticians } from "@/lib/api-loader";   // ← NOVÝ IMPORT
-import { LAW_NAMES } from "@/lib/parliament-data";     // LAW_NAMES zůstává pro "Poslední zákon"
+import { fetchLaws, fetchPoliticians } from "@/lib/api-loader";
+import { type Politician } from "@/lib/parliament-data";
+
+function getLastThreeVotesCumulativeChange(politician: Politician): number {
+  const lastThreeVotes = politician.voteHistory.slice(-3);
+  return lastThreeVotes.reduce((sum, vote) => sum + vote.scoreChange, 0);
+}
 
 // L-shaped slot machine lever: horizontal arm from box, bends 90deg up, ends in red ball
 function SlotLever({ pulled, onPull }: { pulled: boolean; onPull: () => void }) {
@@ -77,7 +82,7 @@ function SlotCard({
   }, [isSpinning, revealDelay]);
 
   const isPositive = pol.lastChange >= 0;
-  const changeColor = isPositive ? "#22c55e" : "#ef4444";
+  const changeColor = isPositive ? "#22c55e" : "#D04544";
 
   return (
     <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-b border-border last:border-b-0 relative overflow-hidden">
@@ -137,7 +142,8 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
   const [leverPulled, setLeverPulled] = useState(false);
 
   // === DATA Z API ===
-  const [apiPoliticians, setApiPoliticians] = useState<any[]>([]);
+  const [apiPoliticians, setApiPoliticians] = useState<Politician[]>([]);
+  const [latestLawName, setLatestLawName] = useState("Aktuální hlasování");
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
 
@@ -145,8 +151,18 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await fetchPoliticians();
-        setApiPoliticians(data || []);
+        const [politiciansData, lawsData] = await Promise.all([
+          fetchPoliticians(),
+          fetchLaws(),
+        ]);
+
+        setApiPoliticians(politiciansData || []);
+
+        const latestLaw = [...(lawsData || [])]
+          .sort((a, b) => b.id - a.id)[0];
+        if (latestLaw?.name) {
+          setLatestLawName(latestLaw.name);
+        }
       } catch (err) {
         console.error("Chyba při načítání politiků z API:", err);
         setFetchError(true);
@@ -175,12 +191,12 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
       .map((pol) => ({
         id: pol.id,
         name: pol.name || "Neznámý poslanec",
+        party: pol.party || "",
         shortParty: pol.shortParty || "?",
         partyColor: pol.partyColor || "#666666",
         score: pol.score || 950,
         imageUrl: pol.imageUrl || "/placeholder.svg",
-        // Dummy změna pro vizuální efekt (API ji nemá)
-        lastChange: Math.floor(Math.random() * 45) - 18,
+        lastChange: getLastThreeVotesCumulativeChange(pol),
       }))
       .sort((a, b) => Math.abs(b.lastChange) - Math.abs(a.lastChange))
       .slice(0, 20);
@@ -188,7 +204,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
 
   const maxPages = Math.max(1, Math.ceil(allTrending.length / 4));
   const displayedPoliticians = allTrending.slice(slotPage * 4, slotPage * 4 + 4);
-  const latestLaw = LAW_NAMES[LAW_NAMES.length - 1] || "Aktuální hlasování";
+  const latestLaw = latestLawName;
 
   const pullLever = useCallback(() => {
     if (isSpinning || allTrending.length === 0) return;
@@ -296,7 +312,7 @@ export function AboutSection({ onNavigateToLaws }: AboutSectionProps) {
 
               <div className="px-5 py-2 border-t border-border flex items-center justify-between">
                 <span className="text-[9px] font-mono text-muted-foreground">
-                  Průměr za poslední hlasování • Stránka {slotPage + 1}/{maxPages}
+                  Změna = součet změn za poslední 3 hlasování • Stránka {slotPage + 1}/{maxPages}
                 </span>
                 {/* Mobile shuffle button – visible only on small screens */}
                 <button

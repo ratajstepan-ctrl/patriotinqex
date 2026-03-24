@@ -43,6 +43,23 @@ export interface Party {
   founded: number;
 }
 
+export function buildScoreTimeline(voteHistory: VoteRecord[], startScore = 1000): number[] {
+  const timeline: number[] = [];
+  let current = startScore;
+  for (const vote of voteHistory) {
+    current += vote.scoreChange;
+    timeline.push(current);
+  }
+  return timeline;
+}
+
+export function getLatestScoreChange(voteHistory: VoteRecord[], startScore = 1000): number {
+  const timeline = buildScoreTimeline(voteHistory, startScore);
+  if (timeline.length === 0) return 0;
+  if (timeline.length === 1) return timeline[0] - startScore;
+  return timeline[timeline.length - 1] - timeline[timeline.length - 2];
+}
+
 
 // Helper: compute age from birth date (podporuje YYYY, DD.MM.YYYY, YYYY-MM-DD)
 export function getAge(birthDate: string | number | undefined): number {

@@ -5,7 +5,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import type { Politician, Party } from "@/lib/parliament-data";
+import { getLatestScoreChange, type Politician, type Party } from "@/lib/parliament-data";
 
 interface CompareItem {
   type: "politician" | "party";
@@ -23,7 +23,7 @@ interface CompareViewProps {
 function scoreColor(score: number): string {
   if (score >= 1200) return "#22c55e";
   if (score >= 900) return "#eab308";
-  return "#ef4444";
+  return "#D04544";
 }
 
 function getPolScore(item: CompareItem, politicians: Politician[]): number {
@@ -37,20 +37,14 @@ function getPolScore(item: CompareItem, politicians: Politician[]): number {
 function getLastChange(item: CompareItem, politicians: Politician[]): number {
   if (item.type === "politician") {
     const pol = item.data as Politician;
-    const lastThree = pol.voteHistory.slice(-3);
-    return lastThree.length > 0
-      ? Math.round(lastThree.reduce((s, v) => s + v.scoreChange, 0) / lastThree.length)
-      : 0;
+    return getLatestScoreChange(pol.voteHistory);
   }
   const party = item.data as Party;
   const members = politicians.filter((p) => p.party === party.name);
   if (members.length === 0) return 0;
   let total = 0;
   for (const m of members) {
-    const lastThree = m.voteHistory.slice(-3);
-    total += lastThree.length > 0
-      ? Math.round(lastThree.reduce((s, v) => s + v.scoreChange, 0) / lastThree.length)
-      : 0;
+    total += getLatestScoreChange(m.voteHistory);
   }
   return Math.round(total / members.length);
 }
@@ -110,7 +104,7 @@ function CompareCard({ item, politicians, color }: { item: CompareItem; politici
   const chartData = useMemo(() => getChartData(item, politicians), [item, politicians]);
   const votes = getVoteHistory(item, politicians);
   const sc = scoreColor(score);
-  const changeCol = change >= 0 ? "#22c55e" : "#ef4444";
+  const changeCol = change >= 0 ? "#22c55e" : "#D04544";
 
   return (
     <div className="flex-1 p-6 flex flex-col gap-4">
@@ -168,7 +162,7 @@ function CompareCard({ item, politicians, color }: { item: CompareItem; politici
         {votes.map((v, i) => (
           <div key={`${v.lawName}-${i}`} className="flex items-center gap-2 text-xs">
             <span className="text-foreground truncate flex-1" title={v.lawName}>{v.lawName}</span>
-            <span className="font-mono font-bold" style={{ color: v.scoreChange >= 0 ? "#22c55e" : "#ef4444" }}>
+            <span className="font-mono font-bold" style={{ color: v.scoreChange >= 0 ? "#22c55e" : "#D04544" }}>
               {v.scoreChange >= 0 ? "+" : ""}{v.scoreChange}
             </span>
           </div>
@@ -232,7 +226,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
             <div className="w-8 h-px bg-primary" />
             <span className="text-xs font-mono uppercase tracking-[0.3em] text-primary">{"Porovn\u00e1n\u00ed"}</span>
           </div>
-          <button type="button" onClick={onClose} className="text-xs font-mono uppercase tracking-wider text-[#CF4444] border-2 border-[#CF4444] hover:bg-[#CF4444] hover:text-white transition-colors flex items-center gap-2 px-3 py-1.5">
+          <button type="button" onClick={onClose} className="text-xs font-mono uppercase tracking-wider text-[#D04544] border-2 border-[#D04544] hover:bg-[#D04544] hover:text-white transition-colors flex items-center gap-2 px-3 py-1.5">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
             {"Zav\u0159\u00edt porovn\u00e1n\u00ed"}
           </button>
@@ -240,7 +234,7 @@ export function CompareView({ leftItem, rightItem, politicians, onClose, onScrol
 
         <div className="flex flex-col sm:flex-row border border-border bg-background overflow-hidden">
           {/* Left side */}
-          <CompareCard item={leftItem} politicians={politicians} color="#CF4444" />
+          <CompareCard item={leftItem} politicians={politicians} color="#D04544" />
 
           {/* Center wedge */}
           {rightItem ? (

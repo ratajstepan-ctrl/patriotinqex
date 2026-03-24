@@ -5,7 +5,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Party, Politician } from "@/lib/parliament-data";
+import { getLatestScoreChange, type Party, type Politician } from "@/lib/parliament-data";
 
 interface PartyProfileProps {
   party: Party;
@@ -32,7 +32,17 @@ const VISIBLE_LAWS = 7;
 const VOTE_PAGE_SIZE = 8;
 
 function voteLabel(v: string) { switch (v) { case "pro": return "Pro"; case "proti": return "Proti"; case "zdrzel": return "Zdr\u017eel"; default: return "Nehlas."; } }
-function voteColor(v: string) { switch (v) { case "pro": return "#22c55e"; case "proti": return "#ef4444"; default: return "#eab308"; } }
+function voteColor(v: string) { switch (v) { case "pro": return "#22c55e"; case "proti": return "#D04544"; default: return "#eab308"; } }
+
+function buildMemberScoreTimeline(politician: Politician): number[] {
+  let score = 1000;
+  const timeline: number[] = [];
+  for (const vote of politician.voteHistory) {
+    score += vote.scoreChange;
+    timeline.push(score);
+  }
+  return timeline;
+}
 
 export function PartyProfile({ party, politicians, onClose, onSelectPolitician, onCompare }: PartyProfileProps) {
   const profileRef = useRef<HTMLDivElement>(null);
@@ -58,12 +68,10 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
     let totalChange = 0;
     let hasPos = false, hasNeg = false;
     for (const pol of partyPoliticians) {
-      const last = pol.voteHistory[pol.voteHistory.length - 1];
-      if (last) {
-        totalChange += last.scoreChange;
-        if (last.scoreChange > 0) hasPos = true;
-        if (last.scoreChange < 0) hasNeg = true;
-      }
+      const derivedChange = getLatestScoreChange(pol.voteHistory);
+      totalChange += derivedChange;
+      if (derivedChange > 0) hasPos = true;
+      if (derivedChange < 0) hasNeg = true;
     }
     const avg = Math.round(totalChange / partyPoliticians.length);
     return { change: avg, cancelled: avg === 0 && hasPos && hasNeg };
@@ -86,7 +94,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
   // Build vote history for the party (aggregate per law)
   const partyVoteHistory = useMemo(() => {
     if (partyPoliticians.length === 0) return [];
-    const numVotes = partyPoliticians[0]?.voteHistory.length ?? 0;
+    const numVotes = Math.max(...partyPoliticians.map((p) => p.voteHistory.length));
     const history: Array<{
       lawName: string;
       date: string;
@@ -103,11 +111,12 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
           memberVotes.push({ name: pol.name, voted: vote.voted, scoreChange: vote.scoreChange, imageUrl: pol.imageUrl });
         }
       }
-      const ref = partyPoliticians[0].voteHistory[i];
+      if (memberVotes.length === 0) continue;
+      const ref = partyPoliticians.find((p) => p.voteHistory[i])?.voteHistory[i];
       history.push({
-        lawName: ref.lawName,
-        date: ref.date,
-        avgChange: Math.round(totalChange / partyPoliticians.length),
+        lawName: ref?.lawName || `Hlasování #${i + 1}`,
+        date: ref?.date || "",
+        avgChange: Math.round(totalChange / memberVotes.length),
         memberVotes,
       });
     }
@@ -132,21 +141,24 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
   // Build cumulative average score over time (MMR)
   const chartData = useMemo(() => {
     if (partyPoliticians.length === 0) return [];
-    const numVotes = partyPoliticians[0]?.voteHistory.length ?? 0;
+    const numVotes = Math.max(...partyPoliticians.map((p) => p.voteHistory.length));
+    const memberTimelines = partyPoliticians.map((p) => buildMemberScoreTimeline(p));
     const data: Array<{ name: string; fullName: string; score: number; date: string; index: number }> = [];
 
     for (let i = 0; i < numVotes; i++) {
       let totalCumScore = 0;
-      for (const pol of partyPoliticians) {
-        let cumScore = 1000; // MMR base
-        for (let j = 0; j <= i; j++) {
-          cumScore += pol.voteHistory[j].scoreChange;
+      let membersWithPoint = 0;
+      for (const timeline of memberTimelines) {
+        if (typeof timeline[i] === "number") {
+          totalCumScore += timeline[i];
+          membersWithPoint++;
         }
-        totalCumScore += cumScore;
       }
-      const avg = Math.round(totalCumScore / partyPoliticians.length);
-      const vote = partyPoliticians[0].voteHistory[i];
-      data.push({ name: vote.lawName, fullName: vote.lawName, score: avg, date: vote.date, index: i });
+      if (membersWithPoint === 0) continue;
+      const avg = Math.round(totalCumScore / membersWithPoint);
+      const vote = partyPoliticians.find((p) => p.voteHistory[i])?.voteHistory[i];
+      const lawName = vote?.lawName || `Hlasování #${i + 1}`;
+      data.push({ name: lawName, fullName: lawName, score: avg, date: vote?.date || "", index: i });
     }
     return data;
   }, [partyPoliticians]);
@@ -173,8 +185,8 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
     setTimeout(() => setChartAnimating(false), 400);
   };
 
-  const scoreCol = avgScore >= 1200 ? "#22c55e" : avgScore >= 900 ? "#eab308" : "#ef4444";
-  const changeCol = lastScoreChangeInfo.cancelled ? "#9ca3af" : lastScoreChangeInfo.change >= 0 ? "#22c55e" : "#ef4444";
+  const scoreCol = avgScore >= 1200 ? "#22c55e" : avgScore >= 900 ? "#eab308" : "#D04544";
+  const changeCol = lastScoreChangeInfo.cancelled ? "#9ca3af" : lastScoreChangeInfo.change >= 0 ? "#22c55e" : "#D04544";
   const chartStroke = getChartStrokeColor(party.color);
 
   return (
@@ -368,7 +380,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
             </div>
             {visiblePartyVotes.map((vote, i) => {
               const isExpanded = expandedLawIndex === i;
-              const changeColV = vote.avgChange >= 0 ? "#22c55e" : "#ef4444";
+              const changeColV = vote.avgChange >= 0 ? "#22c55e" : "#D04544";
               return (
                 <div key={`${vote.lawName}-${i}`}>
                   <button
@@ -396,7 +408,7 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
                   >
                     <div className="bg-secondary/30 border-t border-border">
                       {vote.memberVotes.map((mv, mi) => {
-                        const mvCol = mv.scoreChange >= 0 ? "#22c55e" : "#ef4444";
+                        const mvCol = mv.scoreChange >= 0 ? "#22c55e" : "#D04544";
                         return (
                           <div key={mi} className="flex items-center gap-3 px-6 py-2 border-b border-border last:border-b-0">
                             <div className="w-6 h-6 rounded-full overflow-hidden bg-secondary flex-shrink-0">
@@ -450,10 +462,9 @@ export function PartyProfile({ party, politicians, onClose, onSelectPolitician, 
             }}
           >
             {displayedMembers.map((member, i) => {
-              const msc = member.score >= 1200 ? "#22c55e" : member.score >= 900 ? "#eab308" : "#ef4444";
-              const lastVote = member.voteHistory[member.voteHistory.length - 1];
-              const mChange = lastVote?.scoreChange ?? 0;
-              const mcCol = mChange >= 0 ? "#22c55e" : "#ef4444";
+              const msc = member.score >= 1200 ? "#22c55e" : member.score >= 900 ? "#eab308" : "#D04544";
+              const mChange = getLatestScoreChange(member.voteHistory);
+              const mcCol = mChange >= 0 ? "#22c55e" : "#D04544";
               const isNew = i >= 10 && showAllMembers;
               return (
                 <button

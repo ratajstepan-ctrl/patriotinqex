@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Politician } from "@/lib/parliament-data";
+import { getLatestScoreChange, type Politician } from "@/lib/parliament-data";
 
 interface PoliticianProfileProps {
   politician: Politician;
@@ -51,7 +51,7 @@ function WrappedTick({ x, y, payload }: { x: number; y: number; payload: { value
 function scoreColor(score: number): string {
   if (score >= 1200) return "#22c55e";
   if (score >= 900) return "#eab308";
-  return "#ef4444";
+  return "#D04544";
 }
 
 export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare }: PoliticianProfileProps) {
@@ -69,9 +69,8 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
     });
   }, [politician]);
 
-  const lastVote = politician.voteHistory[politician.voteHistory.length - 1];
-  const lastScoreChange = lastVote?.scoreChange ?? 0;
-  const changeColor = lastScoreChange >= 0 ? "#22c55e" : "#ef4444";
+  const lastScoreChange = getLatestScoreChange(politician.voteHistory);
+  const changeColor = lastScoreChange >= 0 ? "#22c55e" : "#D04544";
 
   const effectiveChartOffset = chartOffset ?? Math.max(0, chartData.length - VISIBLE_LAWS);
   const visibleChartData = chartData.slice(effectiveChartOffset, effectiveChartOffset + VISIBLE_LAWS);
@@ -114,7 +113,7 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
   const sc = scoreColor(politician.score);
   const birthLabel = politician.gender === "Žena" ? "Narozená" : "Narozený";
   const voteLabel = (v: string) => { switch (v) { case "pro": return "Pro"; case "proti": return "Proti"; case "zdrzel": return "Zdr\u017eel"; default: return "Nehlas."; } };
-  const voteColor = (v: string) => { switch (v) { case "pro": return "#22c55e"; case "proti": return "#ef4444"; default: return "#eab308"; } };
+  const voteColor = (v: string) => { switch (v) { case "pro": return "#22c55e"; case "proti": return "#D04544"; default: return "#eab308"; } };
 
   // Slide animation for vote history
   const slideClass = voteSlideDir === "left"
@@ -233,7 +232,7 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs font-mono uppercase">{"Sk\u00f3re:"}</span>
                             <span className="text-sm font-bold font-mono" style={{ color: sc }}>{d.score}</span>
-                            <span className="text-xs font-mono" style={{ color: d.change >= 0 ? "#22c55e" : "#ef4444" }}>({d.change >= 0 ? "+" : ""}{d.change})</span>
+                            <span className="text-xs font-mono" style={{ color: d.change >= 0 ? "#22c55e" : "#D04544" }}>({d.change >= 0 ? "+" : ""}{d.change})</span>
                           </div>
                         </div>
                       );
@@ -297,7 +296,7 @@ export function PoliticianProfile({ politician, onClose, onGoToParty, onCompare 
                     <span className="text-foreground truncate" title={vote.lawName}>{vote.lawName}</span>
                     <span className="text-muted-foreground font-mono text-xs text-center whitespace-nowrap">{vote.date}</span>
                     <span className="font-mono text-xs font-bold uppercase text-center" style={{ color: voteColor(vote.voted) }}>{voteLabel(vote.voted)}</span>
-                    <span className="text-right font-mono text-xs font-bold" style={{ color: vote.scoreChange >= 0 ? "#22c55e" : "#ef4444" }}>{vote.scoreChange >= 0 ? "+" : ""}{vote.scoreChange}</span>
+                    <span className="text-right font-mono text-xs font-bold" style={{ color: vote.scoreChange >= 0 ? "#22c55e" : "#D04544" }}>{vote.scoreChange >= 0 ? "+" : ""}{vote.scoreChange}</span>
                   </div>
                 ))}
               </div>
